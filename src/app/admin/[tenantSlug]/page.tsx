@@ -1801,7 +1801,7 @@ export default function AdminDashboardPage() {
                         </div>
                         {/* Swatches Grid */}
                         <div className="flex flex-wrap gap-1.5 mt-1">
-                          {["#09090b", "#062f22", "#0f172a", "#450a0a", "#fdf2f8", "#faf5ff", "#fafafa", "#0f172a", "#121212", "#ffffff"].map((c) => (
+                          {["#09090b", "#062f22", "#0f172a", "#450a0a", "#fdf2f8", "#faf5ff", "#fafafa", "#020617", "#121212", "#ffffff"].map((c) => (
                             <button
                               key={c}
                               type="button"
