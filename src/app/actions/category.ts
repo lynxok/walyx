@@ -8,6 +8,7 @@ export type CreateCategoryInput = {
   slug: string;
   description?: string;
   type: string; // ROPA, VIANDA, PASTELERIA
+  price?: number;
   tenantId: string;
 };
 
@@ -44,6 +45,7 @@ export async function createCategory(input: CreateCategoryInput) {
         slug: input.slug.toLowerCase().trim(),
         description: input.description,
         type: input.type,
+        price: input.price !== undefined ? input.price : null,
         tenantId: input.tenantId,
       },
     });
@@ -57,7 +59,7 @@ export async function createCategory(input: CreateCategoryInput) {
 
 export async function updateCategory(
   id: string,
-  input: { name: string; slug: string; description?: string; type: string }
+  input: { name: string; slug: string; description?: string; type: string; price?: number }
 ) {
   try {
     const category = await db.category.update({
@@ -67,8 +69,18 @@ export async function updateCategory(
         slug: input.slug.toLowerCase().trim(),
         description: input.description,
         type: input.type,
+        price: input.price !== undefined ? input.price : null,
       },
     });
+
+    // Cascading price updates to all products if it is a VIANDA category
+    if (input.type === "VIANDA" && input.price !== undefined && input.price !== null) {
+      await db.product.updateMany({
+        where: { categoryId: id },
+        data: { price: input.price },
+      });
+    }
+
     return { success: true, data: category };
   } catch (error: any) {
     console.error("Error updating category: ", error);
@@ -78,8 +90,6 @@ export async function updateCategory(
 
 export async function deleteCategory(id: string) {
   try {
-    // Note: Due to onDelete: Cascade on schema.prisma, products in this category will also be deleted.
-    // Or we could reassign them, but cascading is standard for simplified MVPs.
     const category = await db.category.delete({
       where: { id },
     });

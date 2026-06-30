@@ -50,11 +50,21 @@ export async function getProductsByTenant(tenantId: string, categoryId?: string)
 
 export async function createProduct(input: ProductInput) {
   try {
+    let finalPrice = input.price;
+    if (input.categoryId) {
+      const category = await db.category.findUnique({
+        where: { id: input.categoryId },
+      });
+      if (category && category.type === "VIANDA" && category.price !== null && category.price !== undefined) {
+        finalPrice = category.price;
+      }
+    }
+
     const product = await db.product.create({
       data: {
         name: input.name,
         description: input.description,
-        price: input.price,
+        price: finalPrice,
         stock: input.stock ?? 0,
         imageUrl: input.imageUrl,
         isActive: input.isActive ?? true,
@@ -84,12 +94,23 @@ export async function createProduct(input: ProductInput) {
 
 export async function updateProduct(id: string, input: Partial<ProductInput>) {
   try {
+    let finalPrice = input.price;
+    const catId = input.categoryId;
+    if (catId) {
+      const category = await db.category.findUnique({
+        where: { id: catId },
+      });
+      if (category && category.type === "VIANDA" && category.price !== null && category.price !== undefined) {
+        finalPrice = category.price;
+      }
+    }
+
     const product = await db.product.update({
       where: { id },
       data: {
         name: input.name,
         description: input.description,
-        price: input.price,
+        price: finalPrice,
         stock: input.stock,
         imageUrl: input.imageUrl,
         isActive: input.isActive,

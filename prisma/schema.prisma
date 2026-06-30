@@ -26,6 +26,7 @@ model Category {
   description String?
   slug        String
   type        String    // "ROPA", "VIANDA", "PASTELERIA"
+  price       Float?
   tenantId    String
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products    Product[]

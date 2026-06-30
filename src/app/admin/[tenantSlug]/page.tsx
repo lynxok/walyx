@@ -26,7 +26,7 @@ import {
   CheckSquare
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
-import { getCategoriesByTenant } from "@/app/actions/category";
+import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
 import { getProductsByTenant, createProduct, updateProduct, deleteProduct } from "@/app/actions/product";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
@@ -39,6 +39,7 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [tenant, setTenant] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
+  const hasType = categories.length > 0 ? categories[0].type : "VIANDA";
   const [products, setProducts] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   
@@ -71,6 +72,13 @@ export default function AdminDashboardPage() {
   const [stockMovementProdId, setStockMovementProdId] = useState("");
   const [stockMovementQty, setStockMovementQty] = useState(0);
   const [stockMovementReason, setStockMovementReason] = useState("Ingreso de mercadería");
+
+  // Category management state
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [catName, setCatName] = useState("");
+  const [catPrice, setCatPrice] = useState<number>(0);
+  const [categoryError, setCategoryError] = useState("");
 
   // Insumos/Recipes states
   const [insumos, setInsumos] = useState<string[]>(["Harina 0000", "Pollo Pechuga", "Zanahoria fresca", "Dulce de Leche Repostero"]);
@@ -169,12 +177,20 @@ export default function AdminDashboardPage() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prodName || prodPrice <= 0 || !prodCategoryId) return;
+    const hasType = categories.length > 0 ? categories[0].type : "VIANDA";
+    const inheritedPrice = hasType === "VIANDA" 
+      ? (categories.find(c => c.id === prodCategoryId)?.price || 0)
+      : prodPrice;
+
+    if (!prodName || inheritedPrice <= 0 || !prodCategoryId) {
+      alert("Por favor asegúrate de que el producto tenga un nombre, categoría y precio válido.");
+      return;
+    }
 
     const payload = {
       name: prodName,
       description: prodDesc,
-      price: prodPrice,
+      price: inheritedPrice,
       stock: prodStock,
       imageUrl: prodImageUrl,
       tenantId: tenant.id,
@@ -242,6 +258,80 @@ export default function AdminDashboardPage() {
     setCashCloseSuccess(true);
   };
 
+  const handleOpenCreateCategoryModal = () => {
+    setEditingCategory(null);
+    setCatName("");
+    setCatPrice(0);
+    setCategoryError("");
+    setShowCategoryModal(true);
+  };
+
+  const handleOpenEditCategoryModal = (cat: any) => {
+    setEditingCategory(cat);
+    setCatName(cat.name);
+    setCatPrice(cat.price || 0);
+    setCategoryError("");
+    setShowCategoryModal(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName) return;
+
+    const catSlug = catName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+    let res;
+    if (editingCategory) {
+      res = await updateCategory(editingCategory.id, {
+        name: catName,
+        slug: catSlug,
+        type: hasType,
+        price: hasType === "VIANDA" ? catPrice : undefined,
+      });
+    } else {
+      res = await createCategory({
+        name: catName,
+        slug: catSlug,
+        type: hasType,
+        price: hasType === "VIANDA" ? catPrice : undefined,
+        tenantId: tenant.id,
+      });
+    }
+
+    if (res.success) {
+      setShowCategoryModal(false);
+      fetchData();
+    } else {
+      setCategoryError(res.error || "Error al guardar la categoría.");
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar esta categoría? Se eliminarán también todos los productos asociados debido al borrado en cascada.")) {
+      const res = await deleteCategory(id);
+      if (res.success) {
+        fetchData();
+      } else {
+        alert(res.error || "Error al eliminar la categoría.");
+      }
+    }
+  };
+
+  // Sync product price with category price automatically when category changes (VIANDA only)
+  useEffect(() => {
+    if (hasType === "VIANDA" && prodCategoryId) {
+      const selectedCat = categories.find((c) => c.id === prodCategoryId);
+      if (selectedCat && selectedCat.price !== null && selectedCat.price !== undefined) {
+        setProdPrice(selectedCat.price);
+      }
+    }
+  }, [prodCategoryId, categories, hasType]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
@@ -262,8 +352,6 @@ export default function AdminDashboardPage() {
   }
 
   // Detect type based on categories
-  const hasType = categories.length > 0 ? categories[0].type : "VIANDA";
-
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden">
       {/* Top Banner Header */}
@@ -865,6 +953,52 @@ export default function AdminDashboardPage() {
                   Guardar Cambios
                 </PremiumButton>
               </div>
+
+              {/* Category Pricing Manager */}
+              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Gestionar Categorías</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Edita nombres y establece precios de categoría (heredados por los productos).</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {categories.map((cat) => {
+                    const isVianda = cat.type === "VIANDA";
+                    return (
+                      <div key={cat.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center border-b border-zinc-900 pb-3">
+                        <div className="flex-1">
+                          <span className="text-xs font-bold text-white">{cat.name}</span>
+                          <span className="text-[9px] ml-2 px-1.5 py-0.5 bg-zinc-950 text-zinc-400 border border-zinc-900 rounded font-semibold uppercase">{cat.type}</span>
+                        </div>
+                        {isVianda && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase">Precio Categoría ($):</span>
+                            <input 
+                              type="number"
+                              defaultValue={cat.price || 0}
+                              onBlur={async (e) => {
+                                const newPrice = parseFloat(e.target.value) || 0;
+                                const { updateCategory } = await import("@/app/actions/category");
+                                const res = await updateCategory(cat.id, {
+                                  name: cat.name,
+                                  slug: cat.slug,
+                                  type: cat.type,
+                                  price: newPrice
+                                });
+                                if (res.success) {
+                                  alert(`Precio de la categoría "${cat.name}" actualizado a $${newPrice}. Los productos asociados heredaron este precio.`);
+                                  fetchData();
+                                }
+                              }}
+                              className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-2 rounded-lg w-24 text-center outline-none transition-colors"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -909,13 +1043,25 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Precio ($)</label>
-                  <input 
-                    type="number"
-                    required
-                    value={prodPrice}
-                    onChange={(e) => setProdPrice(parseFloat(e.target.value) || 0)}
-                    className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                  />
+                  {hasType === "VIANDA" ? (
+                    <div className="flex flex-col gap-1">
+                      <input 
+                        type="number"
+                        disabled
+                        value={categories.find(c => c.id === prodCategoryId)?.price || 0}
+                        className="bg-zinc-950 border border-zinc-900 opacity-60 text-xs text-amber-500 p-3 rounded-xl cursor-not-allowed outline-none font-bold"
+                      />
+                      <span className="text-[9px] text-zinc-500">Heredado de la categoría</span>
+                    </div>
+                  ) : (
+                    <input 
+                      type="number"
+                      required
+                      value={prodPrice}
+                      onChange={(e) => setProdPrice(parseFloat(e.target.value) || 0)}
+                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Stock Inicial</label>
