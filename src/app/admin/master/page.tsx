@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, Store, Users, ShoppingBag, DollarSign, Edit, Plus, X, Check, ShieldAlert } from "lucide-react";
+import { Loader2, Store, Users, ShoppingBag, DollarSign, Edit, Plus, X, Check, ShieldAlert, KeyRound, Eye, EyeOff } from "lucide-react";
 import { getCurrentGlobalUser } from "@/app/actions/auth";
-import { getAllTenants, getSystemStats, updateTenantPlanAndStatus } from "@/app/actions/master";
+import { getAllTenants, getSystemStats, updateTenantPlanAndStatus, updateTenantPasswordAdmin } from "@/app/actions/master";
 import { createTenant } from "@/app/actions/tenant";
 import { PremiumButton } from "@/components/ui/PremiumButton";
+import Link from "next/link";
 
 export default function MasterDashboard() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -28,6 +29,11 @@ export default function MasterDashboard() {
   const [newTenantSlug, setNewTenantSlug] = useState("");
   const [newTenantDesc, setNewTenantDesc] = useState("");
   const [newTenantType, setNewTenantType] = useState<"ROPA" | "VIANDA" | "PASTELERIA">("VIANDA");
+
+  // Change Password Modal States
+  const [passwordTenant, setPasswordTenant] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -100,8 +106,29 @@ export default function MasterDashboard() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordTenant) return;
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const res = await updateTenantPasswordAdmin(passwordTenant.id, newPassword);
+    setSaving(false);
+
+    if (res.success) {
+      setSuccess(`Contraseña de ${passwordTenant.name} cambiada con éxito.`);
+      setPasswordTenant(null);
+      setNewPassword("");
+      await loadData();
+    } else {
+      setError(res.error || "Error al cambiar la contraseña.");
+    }
+  };
+
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newTenantName || !newTenantSlug) return;
     setSaving(true);
     setError("");
     setSuccess("");
@@ -114,8 +141,8 @@ export default function MasterDashboard() {
     });
 
     setSaving(false);
-    if (res.success) {
-      setSuccess(`Comercio "${newTenantName}" creado con éxito.`);
+    if (res.success && res.data) {
+      setSuccess(`Negocio '${res.data.name}' creado con éxito.`);
       setShowAddModal(false);
       // Reset form
       setNewTenantName("");
@@ -124,7 +151,7 @@ export default function MasterDashboard() {
       setNewTenantType("VIANDA");
       await loadData();
     } else {
-      setError(res.error || "Error al crear comercio.");
+      setError(res.error || "Error al crear inquilino.");
     }
   };
 
@@ -139,13 +166,10 @@ export default function MasterDashboard() {
   if (isAdmin === false) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-4">
-          <ShieldAlert className="w-8 h-8 text-rose-500" />
-        </div>
+        <ShieldAlert className="w-12 h-12 text-rose-500 mb-4 animate-bounce" />
         <h1 className="text-2xl font-black text-white">Acceso Denegado</h1>
-        <p className="text-sm text-zinc-500 max-w-sm mt-2">
-          Debes estar autenticado con una cuenta de Superadmin para acceder al panel maestro `/admin/master`.
-        </p>
+        <p className="text-zinc-500 text-xs mt-1.5 max-w-sm">No tienes permisos de administrador para ver este panel central.</p>
+        <Link href="/" className="mt-6 text-xs text-amber-500 font-bold hover:underline">Volver al inicio</Link>
       </div>
     );
   }
@@ -268,6 +292,11 @@ export default function MasterDashboard() {
                     <tr key={t.id} className="hover:bg-zinc-900/10 transition-colors">
                       <td className="px-6 py-4 font-bold text-white">
                         {t.name}
+                        {!t.passwordHash && (
+                          <span className="ml-2 inline-flex text-[9px] font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20">
+                            Sin Clave
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-zinc-400 font-mono">
                         {t.slug}
@@ -300,12 +329,20 @@ export default function MasterDashboard() {
                         📋 {t._count.orders} pedidos procesados
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleEditClick(t)}
-                          className="p-2 hover:bg-zinc-800 rounded-xl transition-all inline-flex items-center gap-1.5 text-zinc-400 hover:text-amber-500 font-bold"
-                        >
-                          <Edit className="w-4 h-4" /> Configurar
-                        </button>
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => { setPasswordTenant(t); setNewPassword(""); }}
+                            className="p-2 hover:bg-zinc-800 rounded-xl transition-all inline-flex items-center gap-1.5 text-zinc-400 hover:text-orange-400 font-bold"
+                          >
+                            <KeyRound className="w-4 h-4" /> Clave
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(t)}
+                            className="p-2 hover:bg-zinc-800 rounded-xl transition-all inline-flex items-center gap-1.5 text-zinc-400 hover:text-amber-500 font-bold"
+                          >
+                            <Edit className="w-4 h-4" /> Configurar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -387,6 +424,50 @@ export default function MasterDashboard() {
         </div>
       )}
 
+      {/* Change Password Modal */}
+      {passwordTenant && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-6 relative flex flex-col gap-4 shadow-2xl">
+            <button
+              onClick={() => setPasswordTenant(null)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-black text-white">Asignar Contraseña</h3>
+            <p className="text-xs text-zinc-500 -mt-2">Establece una contraseña de panel para {passwordTenant.name}</p>
+
+            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-zinc-500 font-bold uppercase">Nueva Contraseña (mín. 6 caracteres)</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="bg-zinc-950 border border-zinc-800 text-xs text-white p-3 pr-11 rounded-xl outline-none w-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <PremiumButton type="submit" variant="primary" size="md" disabled={saving || newPassword.length < 6} glow className="justify-center py-3.5 mt-2 bg-gradient-to-r from-orange-500 to-amber-500">
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Guardar Contraseña"}
+              </PremiumButton>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add Tenant / Onboarding Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
@@ -409,7 +490,6 @@ export default function MasterDashboard() {
                   value={newTenantName}
                   onChange={(e) => {
                     setNewTenantName(e.target.value);
-                    // Autofill slug
                     setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
                   }}
                   required

@@ -127,3 +127,28 @@ export async function updateTenantPlanAndStatus(
     return { success: false, error: error.message || "Error al actualizar la suscripción." };
   }
 }
+
+export async function updateTenantPasswordAdmin(tenantId: string, password: string) {
+  await ensureSuperAdmin();
+  if (!password || password.length < 6) {
+    return { success: false, error: "La contraseña debe tener al menos 6 caracteres." };
+  }
+
+  try {
+    const crypto = await import("crypto");
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto
+      .pbkdf2Sync(password, salt, 1000, 64, "sha512")
+      .toString("hex");
+    const passwordHash = `${salt}:${hash}`;
+
+    await db.tenant.update({
+      where: { id: tenantId },
+      data: { passwordHash }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Error al cambiar la contraseña." };
+  }
+}
