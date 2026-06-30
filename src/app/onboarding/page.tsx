@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, ArrowLeft, ArrowRight, Loader2, Store } from "lucide-react";
+import { Sparkles, ArrowLeft, ArrowRight, Loader2, Store, Lock, Eye, EyeOff } from "lucide-react";
 import { createTenant } from "@/app/actions/tenant";
+import { setTenantPassword } from "@/app/actions/tenantAuth";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 
 export default function OnboardingPage() {
@@ -17,6 +18,10 @@ export default function OnboardingPage() {
   const [deliveryCost, setDeliveryCost] = useState("0");
   const [deliveryZones, setDeliveryZones] = useState("");
   
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,22 +40,25 @@ export default function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !slug) {
-      setError("Por favor, completa el nombre y slug de tu negocio.");
+      setError("Por favor, completá el nombre y slug de tu negocio.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
       return;
     }
     setError("");
     setLoading(true);
 
-    const res = await createTenant({
-      name,
-      slug,
-      description,
-      type,
-    });
+    const res = await createTenant({ name, slug, description, type });
 
     if (res.success && res.data) {
-      // In a production setup, we would also store whatsapp, delivery cost, and delivery zones.
-      // For this MVP, we save the Tenant and categories, then redirect.
+      // Guardar contraseña del negocio
+      await setTenantPassword(res.data.id, password);
       router.push(`/admin/${res.data.slug}`);
     } else {
       setError(res.error || "Hubo un error al registrar el negocio.");
@@ -175,6 +183,52 @@ export default function OnboardingPage() {
               onChange={(e) => setDeliveryZones(e.target.value)}
               className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 outline-none text-sm text-white px-4 py-3 rounded-xl transition-all"
             />
+          </div>
+
+          {/* Contraseña del panel */}
+          <div className="border-t border-zinc-900 pt-5 flex flex-col gap-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Lock className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Contraseña del Panel</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 -mt-2">Con esta contraseña podrás ingresar a administrar tu negocio desde <strong className="text-zinc-400">/login</strong>.</p>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Contraseña (mín. 6 caracteres)</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 outline-none text-sm text-white pl-10 pr-11 py-3 rounded-xl transition-all w-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Confirmar Contraseña</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 outline-none text-sm text-white pl-10 pr-4 py-3 rounded-xl transition-all w-full"
+                />
+              </div>
+            </div>
           </div>
 
           <PremiumButton 
