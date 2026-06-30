@@ -1751,30 +1751,30 @@ export default function AdminDashboardPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Primary Color Picker */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color Primario / Acento</label>
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Color Primario / Acento</label>
+                        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-900 p-2.5 rounded-xl">
                           <input
                             type="color"
                             value={primaryColor}
                             onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                            className="h-8 w-10 bg-transparent border-0 rounded-lg cursor-pointer outline-none shrink-0"
                           />
                           <input
                             type="text"
                             value={primaryColor}
                             onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                            className="bg-transparent text-xs text-white outline-none w-full font-mono uppercase"
                           />
                         </div>
                         {/* Swatches Grid */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
+                        <div className="flex flex-wrap gap-1.5 mt-1">
                           {["#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#ef4444", "#8b5cf6", "#f43f5e", "#06b6d4", "#ffffff", "#000000"].map((c) => (
                             <button
                               key={c}
                               type="button"
                               onClick={() => setPrimaryColor(c)}
-                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              className="w-[18px] h-[18px] rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all cursor-pointer"
                               style={{ backgroundColor: c }}
                               title={c}
                             />
@@ -1783,30 +1783,30 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Background Color Picker */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Fondo</label>
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Color de Fondo</label>
+                        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-900 p-2.5 rounded-xl">
                           <input
                             type="color"
                             value={backgroundColor}
                             onChange={(e) => setBackgroundColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                            className="h-8 w-10 bg-transparent border-0 rounded-lg cursor-pointer outline-none shrink-0"
                           />
                           <input
                             type="text"
                             value={backgroundColor}
                             onChange={(e) => setBackgroundColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                            className="bg-transparent text-xs text-white outline-none w-full font-mono uppercase"
                           />
                         </div>
                         {/* Swatches Grid */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
+                        <div className="flex flex-wrap gap-1.5 mt-1">
                           {["#09090b", "#062f22", "#0f172a", "#450a0a", "#fdf2f8", "#faf5ff", "#fafafa", "#0f172a", "#121212", "#ffffff"].map((c) => (
                             <button
                               key={c}
                               type="button"
                               onClick={() => setBackgroundColor(c)}
-                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              className="w-[18px] h-[18px] rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all cursor-pointer"
                               style={{ backgroundColor: c }}
                               title={c}
                             />
@@ -1815,30 +1815,30 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Text Color Picker */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Texto</label>
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Color de Texto</label>
+                        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-900 p-2.5 rounded-xl">
                           <input
                             type="color"
                             value={textColor}
                             onChange={(e) => setTextColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                            className="h-8 w-10 bg-transparent border-0 rounded-lg cursor-pointer outline-none shrink-0"
                           />
                           <input
                             type="text"
                             value={textColor}
                             onChange={(e) => setTextColor(e.target.value)}
-                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                            className="bg-transparent text-xs text-white outline-none w-full font-mono uppercase"
                           />
                         </div>
                         {/* Swatches Grid */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
+                        <div className="flex flex-wrap gap-1.5 mt-1">
                           {["#ffffff", "#f8fafc", "#f0fdf4", "#e5e7eb", "#1f2937", "#18181b", "#3b0764", "#fef2f2", "#a1a1aa", "#000000"].map((c) => (
                             <button
                               key={c}
                               type="button"
                               onClick={() => setTextColor(c)}
-                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              className="w-[18px] h-[18px] rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all cursor-pointer"
                               style={{ backgroundColor: c }}
                               title={c}
                             />
