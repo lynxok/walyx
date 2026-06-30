@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
+  --background: #060814; /* Deep dark blue-tinted background */
   --foreground: #f4f4f5;
-  --card: #121214;
+  --card: #0c0f24; /* Deep blue-tinted card background */
   --card-foreground: #f4f4f5;
-  --popover: #0c0c0e;
+  --popover: #080a1a;
   --popover-foreground: #f4f4f5;
-  --primary: #f59e0b; /* Amber premium gold */
-  --primary-foreground: #09090b;
-  --secondary: #27272a;
+  --primary: #f97316; /* Walyx Vibrant Orange */
+  --primary-foreground: #ffffff;
+  --secondary: #2563eb; /* Walyx Electric Blue */
   --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #f59e0b;
-  --accent-foreground: #09090b;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #d97706;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #2563eb; /* Electric Blue ring */
   
   --radius: 1rem;
 }
@@ -63,19 +63,19 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: #060814;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #1e293b;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
+  background: #f97316; /* Vibrant Orange on hover */
 }
 
 /* Glassmorphism utility */
 .glass-panel {
-  background: rgba(18, 18, 20, 0.6);
+  background: rgba(12, 15, 36, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -85,9 +85,9 @@ body {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .glass-panel-hover:hover {
-  background: rgba(18, 18, 20, 0.8);
-  border-color: rgba(245, 158, 11, 0.3);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 0 15px -3px rgba(245, 158, 11, 0.1);
+  background: rgba(12, 15, 36, 0.8);
+  border-color: rgba(37, 99, 235, 0.3); /* Electric Blue */
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 0 15px -3px rgba(37, 99, 235, 0.15);
   transform: translateY(-2px);
 }
 
@@ -141,10 +141,10 @@ body {
 
 /* Glassmorphism Premium styles */
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(12, 15, 36, 0.5);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glass-card-hover {
@@ -152,9 +152,9 @@ body {
 }
 
 .glass-card-hover:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 30px -5px rgba(255, 255, 255, 0.05);
+  background: rgba(12, 15, 36, 0.75);
+  border-color: rgba(249, 115, 22, 0.3); /* Vibrant Orange */
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 30px -5px rgba(37, 99, 235, 0.25); /* Electric Blue glow */
   transform: translateY(-4px) scale(1.01);
 }
 
