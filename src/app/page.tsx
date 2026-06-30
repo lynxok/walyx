@@ -199,7 +199,7 @@ export default function Home() {
                     <span className="text-3xl font-black">$9</span>
                     <span className="text-zinc-400 text-sm">USD/mes</span>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">~ $11.000 ARS/mes</p>
+                  <p className="text-xs text-zinc-500 mt-1">~ $13.500 ARS/mes (Cotización BNA)</p>
                 </div>
                 <div className="border-t border-white/5 pt-6">
                   <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-4">Qué incluye:</p>
@@ -247,7 +247,7 @@ export default function Home() {
                     <span className="text-4xl font-black">$19</span>
                     <span className="text-zinc-400 text-sm">USD/mes</span>
                   </div>
-                  <p className="text-xs text-amber-500/80 mt-1">~ $23.000 ARS/mes</p>
+                  <p className="text-xs text-amber-500/80 mt-1">~ $28.500 ARS/mes (Cotización BNA)</p>
                 </div>
                 <div className="border-t border-white/5 pt-6">
                   <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-4">Qué incluye:</p>
@@ -293,7 +293,7 @@ export default function Home() {
                     <span className="text-3xl font-black">$35</span>
                     <span className="text-zinc-400 text-sm">USD/mes</span>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">~ $42.000 ARS/mes</p>
+                  <p className="text-xs text-zinc-500 mt-1">~ $52.500 ARS/mes (Cotización BNA)</p>
                 </div>
                 <div className="border-t border-white/5 pt-6">
                   <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-4">Qué incluye:</p>
@@ -380,9 +380,16 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 bg-zinc-950/80 py-8 px-6 text-center text-xs text-zinc-600 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 LYNX Cocina & Ventas. Todos los derechos reservados.</p>
+      <footer className="border-t border-white/5 bg-zinc-950/80 py-10 px-6 text-center text-xs text-zinc-650 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <img src="/logo-lynx-white.png" alt="LYNX Logo" className="h-8 w-auto object-contain opacity-80" />
+            <div className="text-left border-l border-zinc-800 pl-3">
+              <p className="font-bold text-zinc-400">LYNX Consulting</p>
+              <p className="text-[10px] text-zinc-600">SaaS Multi-tenant Conversacional</p>
+            </div>
+          </div>
+          <p className="text-zinc-600 text-left sm:text-right">© 2026 LYNX Consulting. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-zinc-500 font-medium">
             <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Multi-Tenant Aislado</span>
           </div>
