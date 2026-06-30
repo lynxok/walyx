@@ -956,9 +956,14 @@ export default function AdminDashboardPage() {
 
               {/* Category Pricing Manager */}
               <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Gestionar Categorías</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Edita nombres y establece precios de categoría (heredados por los productos).</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Gestionar Categorías</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Edita nombres y establece precios de categoría (heredados por los productos).</p>
+                  </div>
+                  <PremiumButton variant="outline" size="sm" onClick={handleOpenCreateCategoryModal}>
+                    <Plus className="w-4 h-4 mr-1" /> Nueva Categoría
+                  </PremiumButton>
                 </div>
                 <div className="flex flex-col gap-3">
                   {categories.map((cat) => {
@@ -969,36 +974,52 @@ export default function AdminDashboardPage() {
                           <span className="text-xs font-bold text-white">{cat.name}</span>
                           <span className="text-[9px] ml-2 px-1.5 py-0.5 bg-zinc-950 text-zinc-400 border border-zinc-900 rounded font-semibold uppercase">{cat.type}</span>
                         </div>
-                        {isVianda && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase">Precio Categoría ($):</span>
-                            <input 
-                              type="number"
-                              defaultValue={cat.price || 0}
-                              onBlur={async (e) => {
-                                const newPrice = parseFloat(e.target.value) || 0;
-                                const { updateCategory } = await import("@/app/actions/category");
-                                const res = await updateCategory(cat.id, {
-                                  name: cat.name,
-                                  slug: cat.slug,
-                                  type: cat.type,
-                                  price: newPrice
-                                });
-                                if (res.success) {
-                                  alert(`Precio de la categoría "${cat.name}" actualizado a $${newPrice}. Los productos asociados heredaron este precio.`);
-                                  fetchData();
-                                }
-                              }}
-                              className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-2 rounded-lg w-24 text-center outline-none transition-colors"
-                            />
+                        <div className="flex items-center gap-4">
+                          {isVianda && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase">Precio Categoría ($):</span>
+                              <input 
+                                type="number"
+                                defaultValue={cat.price || 0}
+                                onBlur={async (e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  const res = await updateCategory(cat.id, {
+                                    name: cat.name,
+                                    slug: cat.slug,
+                                    type: cat.type,
+                                    price: newPrice
+                                  });
+                                  if (res.success) {
+                                    alert(`Precio de la categoría "${cat.name}" actualizado a $${newPrice}. Los productos asociados heredaron este precio.`);
+                                    fetchData();
+                                  }
+                                }}
+                                className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-2 rounded-lg w-24 text-center outline-none transition-colors"
+                              />
+                            </div>
+                          )}
+                          <div className="flex gap-2.5">
+                            <button 
+                              onClick={() => handleOpenEditCategoryModal(cat)} 
+                              className="p-1 text-zinc-400 hover:text-amber-500 transition-colors cursor-pointer"
+                              title="Editar Categoría"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCategory(cat.id)} 
+                              className="p-1 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                              title="Eliminar Categoría"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-
             </div>
           )}
 
@@ -1163,12 +1184,131 @@ export default function AdminDashboardPage() {
                 <button 
                   type="button" 
                   onClick={() => setShowProductModal(false)}
-                  className="bg-zinc-950 border border-zinc-900 text-xs text-zinc-400 hover:text-white px-4 py-2.5 rounded-xl font-semibold"
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-zinc-400 hover:text-white px-4 py-2.5 rounded-xl font-semibold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <PremiumButton type="submit" variant="primary" size="sm">
                   {editingProduct ? "Guardar Cambios" : "Crear Producto"}
+                </PremiumButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CATEGORY CREATION/EDIT MODAL */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-zinc-900 border border-zinc-900 w-full max-w-md rounded-3xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h3 className="text-lg font-black text-white">{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Ingresa los detalles básicos para agrupar tus productos.</p>
+            </div>
+
+            {categoryError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                {categoryError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCategory} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Nombre de la Categoría</label>
+                <input 
+                  type="text"
+                  required
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+
+              {hasType === "VIANDA" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Precio de Viandas en esta Categoría ($)</label>
+                  <input 
+                    type="number"
+                    required
+                    value={catPrice}
+                    onChange={(e) => setCatPrice(parseFloat(e.target.value) || 0)}
+                    className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors font-bold text-amber-500"
+                  />
+                  <p className="text-[10px] text-zinc-500">Todas las viandas asignadas a esta categoría tomarán este precio automáticamente.</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end border-t border-zinc-900 pt-4 mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowCategoryModal(false)}
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-zinc-400 hover:text-white px-4 py-2.5 rounded-xl font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <PremiumButton type="submit" variant="primary" size="sm">
+                  {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
+                </PremiumButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CATEGORY CREATION/EDIT MODAL */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-55 flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl p-6 flex flex-col gap-5">
+            <div>
+              <h3 className="text-lg font-black text-white">{editingCategory ? "Editar Categoría" : "Nueva Categoría"}</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Configura los detalles de la categoría para tu catálogo.</p>
+            </div>
+
+            {categoryError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">
+                {categoryError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCategory} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Nombre de la Categoría</label>
+                <input 
+                  type="text"
+                  required
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3.5 rounded-xl outline-none"
+                  placeholder="Ej. Viandas Premium o Remeras"
+                />
+              </div>
+
+              {hasType === "VIANDA" && (
+                <div className="flex flex-col gap-1.5 border-t border-zinc-900 pt-3">
+                  <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Precio Fijo para Viandas ($)</label>
+                  <input 
+                    type="number"
+                    value={catPrice}
+                    onChange={(e) => setCatPrice(parseFloat(e.target.value) || 0)}
+                    className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3.5 rounded-xl outline-none"
+                    placeholder="Ej. 3500 (Dejar en 0 si no aplica)"
+                  />
+                  <p className="text-[10px] text-zinc-500 leading-relaxed mt-1">
+                    * Todos los productos de esta categoría heredarán este precio automáticamente y se actualizarán en cascada.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end border-t border-zinc-900 pt-4 mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowCategoryModal(false)}
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-zinc-400 hover:text-white px-4 py-2.5 rounded-xl font-semibold"
+                >
+                  Cancelar
+                </button>
+                <PremiumButton type="submit" variant="primary" size="sm">
+                  {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
                 </PremiumButton>
               </div>
             </form>
