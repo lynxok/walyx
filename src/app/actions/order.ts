@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 export type OrderItemInput = {
   productId: string;
   quantity: number;
+  variantTitle?: string;
+  customization?: string;
 };
 
 export type CreateOrderInput = {
@@ -16,6 +18,10 @@ export type CreateOrderInput = {
   deliveryNotes?: string;
   paymentMethod: "CASH" | "TRANSFER" | "CARD";
   deliveryAddress?: string;
+  deliveryCost?: number;
+  deliveryZoneName?: string;
+  deliveryDate?: string;
+  deliveryTimeSlot?: string;
   items: OrderItemInput[];
 };
 
@@ -75,7 +81,7 @@ export async function createOrder(input: CreateOrderInput) {
 
     const productsMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    let orderTotal = 0;
+    let itemsTotal = 0;
     const orderItemsData = [];
 
     for (const item of input.items) {
@@ -88,12 +94,14 @@ export async function createOrder(input: CreateOrderInput) {
       }
 
       const itemTotal = product.price * item.quantity;
-      orderTotal += itemTotal;
+      itemsTotal += itemTotal;
 
       orderItemsData.push({
         productId: product.id,
         quantity: item.quantity,
         price: product.price,
+        variantTitle: item.variantTitle || null,
+        customization: item.customization || null,
       });
 
       // Deduct stock
@@ -107,6 +115,9 @@ export async function createOrder(input: CreateOrderInput) {
       });
     }
 
+    const deliveryCost = input.deliveryCost || 0;
+    const orderTotal = itemsTotal + deliveryCost;
+
     // 4. Create the Order
     const order = await db.order.create({
       data: {
@@ -118,6 +129,10 @@ export async function createOrder(input: CreateOrderInput) {
         paymentStatus: "PENDING",
         deliveryAddress: input.deliveryAddress || input.customerAddress,
         deliveryNotes: input.deliveryNotes,
+        deliveryCost,
+        deliveryZoneName: input.deliveryZoneName || null,
+        deliveryDate: input.deliveryDate || null,
+        deliveryTimeSlot: input.deliveryTimeSlot || null,
         items: {
           create: orderItemsData,
         },
@@ -132,21 +147,43 @@ export async function createOrder(input: CreateOrderInput) {
     });
 
     // 5. Build WhatsApp text message for the user redirection
-    // In a real scenario, the store phone number would be saved on the Tenant model. Let's use a fallback number.
     const storePhone = "+5491122334455"; // Reemplazar con el teléfono configurado del inquilino
     
     let messageText = `*Nuevo Pedido - ${tenant.name}*\n\n`;
     messageText += `*Cliente:* ${customer.name}\n`;
     messageText += `*Email:* ${customer.email}\n`;
     if (customer.phone) messageText += `*Teléfono:* ${customer.phone}\n`;
+    
+    // Date and time slots
+    if (order.deliveryDate) {
+      messageText += `*Fecha de Entrega:* ${order.deliveryDate}\n`;
+    }
+    if (order.deliveryTimeSlot) {
+      messageText += `*Franja Horaria:* ${order.deliveryTimeSlot}\n`;
+    }
+
     messageText += `\n*Detalle del Pedido:*\n`;
     
     order.items.forEach((item) => {
-      messageText += `- ${item.quantity}x ${item.product.name} ($${item.price.toFixed(2)} c/u)\n`;
+      let itemLine = `- ${item.quantity}x ${item.product.name}`;
+      if (item.variantTitle) {
+        itemLine += ` (${item.variantTitle})`;
+      }
+      itemLine += ` ($${item.price.toFixed(2)} c/u)`;
+      if (item.customization) {
+        itemLine += `\n  _Aclaración: ${item.customization}_`;
+      }
+      messageText += itemLine + `\n`;
     });
     
-    messageText += `\n*Total:* $${orderTotal.toFixed(2)}\n`;
+    messageText += `\n*Subtotal:* $${itemsTotal.toFixed(2)}\n`;
+    if (deliveryCost > 0) {
+      const zoneName = order.deliveryZoneName ? ` (${order.deliveryZoneName})` : "";
+      messageText += `*Envío${zoneName}:* $${deliveryCost.toFixed(2)}\n`;
+    }
+    messageText += `*Total final:* $${orderTotal.toFixed(2)}\n`;
     messageText += `*Método de Pago:* ${input.paymentMethod}\n`;
+    
     if (order.deliveryAddress) {
       messageText += `*Dirección de Entrega:* ${order.deliveryAddress}\n`;
     }

@@ -11,13 +11,32 @@ import {
   Loader2,
   Calendar,
   X,
-  Trash2
+  Trash2,
+  MapPin,
+  Clock,
+  Sparkles
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
 import { createOrder } from "@/app/actions/order";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
+
+// Mock delivery zones matching dynamic styles
+const DEFAULT_ZONES = [
+  { name: "Palermo / Belgrano", cost: 350 },
+  { name: "Caballito / Almagro", cost: 400 },
+  { name: "Recoleta / Retiro", cost: 380 },
+  { name: "Retiro en Sucursal / Take Away", cost: 0 }
+];
+
+// Mock delivery time slots
+const TIME_SLOTS = [
+  "Hoy 12:00 a 14:00 (Almuerzo)",
+  "Hoy 19:30 a 22:00 (Cena)",
+  "Mañana 12:00 a 14:00 (Almuerzo)",
+  "Mañana 19:30 a 22:00 (Cena)"
+];
 
 export default function ShopPublicPage() {
   const params = useParams();
@@ -50,6 +69,8 @@ export default function ShopPublicPage() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [selectedZone, setSelectedZone] = useState(DEFAULT_ZONES[0]);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(TIME_SLOTS[0]);
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TRANSFER" | "CARD">("CASH");
 
@@ -73,7 +94,6 @@ export default function ShopPublicPage() {
 
     const productsRes = await getProductsByTenant(tenantData.id);
     if (productsRes.success && productsRes.data) {
-      // Map database product model to ProductData UI structure
       let mappedType: ProductType = "vianda";
       const storeType = tenantData.categories?.[0]?.type;
       if (storeType === "ROPA") {
@@ -97,7 +117,6 @@ export default function ShopPublicPage() {
 
       setProducts(mapped);
 
-      // Pre-fill weekly planner options for Viandas
       if (mapped.length > 0) {
         const firstProdId = mapped[0].id;
         const initialPlanner: any = {};
@@ -115,7 +134,6 @@ export default function ShopPublicPage() {
     fetchData();
   }, [tenantSlug]);
 
-  // Cart operations
   const handleAddToCart = (prod: ProductData, options: any) => {
     setCart((prev) => {
       const existingIdx = prev.findIndex(
@@ -141,6 +159,14 @@ export default function ShopPublicPage() {
     setCart([]);
   };
 
+  const calculateSubtotal = () => {
+    return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + selectedZone.cost;
+  };
+
   // Submit order for standard catalog (Ropa/Pastelería)
   const handleCheckoutCart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,10 +177,30 @@ export default function ShopPublicPage() {
 
     setCheckoutLoading(true);
 
-    const items = cart.map((item) => ({
-      productId: item.product.id,
-      quantity: item.quantity,
-    }));
+    const items = cart.map((item) => {
+      let variantTitle = undefined;
+      if (item.options && Object.keys(item.options).length > 0) {
+        variantTitle = Object.entries(item.options)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ");
+      }
+      return {
+        productId: item.product.id,
+        quantity: item.quantity,
+        variantTitle,
+        customization: item.customization || undefined,
+      };
+    });
+
+    // Append options details into notes
+    let optionDetailsStr = "Opciones elegidas por producto:\n";
+    cart.forEach((item) => {
+      if (item.options && Object.keys(item.options).length > 0) {
+        optionDetailsStr += `- ${item.product.name} [${Object.entries(item.options).map(([k, v]) => `${k}: ${v}`).join(", ")}]\n`;
+      }
+    });
+
+    const detailedDeliveryNotes = `${optionDetailsStr}\nZona: ${selectedZone.name} (Costo: $${selectedZone.cost})\nHorario de Entrega: ${selectedTimeSlot}\nNotas: ${deliveryNotes}`;
 
     const res = await createOrder({
       tenantId: tenant.id,
@@ -162,9 +208,13 @@ export default function ShopPublicPage() {
       customerEmail,
       customerPhone,
       customerAddress,
-      deliveryNotes: deliveryNotes || undefined,
+      deliveryNotes: detailedDeliveryNotes,
       paymentMethod,
       items,
+      deliveryCost: selectedZone.cost,
+      deliveryZoneName: selectedZone.name,
+      deliveryDate: new Date().toLocaleDateString("es-AR"),
+      deliveryTimeSlot: selectedTimeSlot,
     });
 
     setCheckoutLoading(false);
@@ -194,9 +244,11 @@ export default function ShopPublicPage() {
 
     setCheckoutLoading(true);
 
-    const items = selectedDays.map(([_, info]) => ({
+    const items = selectedDays.map(([day, info]) => ({
       productId: info.productId,
       quantity: info.quantity,
+      variantTitle: day,
+      customization: info.notes || undefined,
     }));
 
     let plannerSummary = "Detalle del menú semanal:\n";
@@ -205,15 +257,21 @@ export default function ShopPublicPage() {
       plannerSummary += `- ${day}: ${info.quantity}x ${p?.name} ${info.notes ? `(${info.notes})` : ""}\n`;
     });
 
+    const detailedNotes = `${plannerSummary}\nZona de Envío: ${selectedZone.name} (Costo: $${selectedZone.cost})\nFranja Horaria: ${selectedTimeSlot}\nNotas adicionales: ${deliveryNotes}`;
+
     const res = await createOrder({
       tenantId: tenant.id,
       customerName,
       customerEmail,
       customerPhone,
       customerAddress,
-      deliveryNotes: `${plannerSummary}\nNotas de entrega: ${deliveryNotes}`,
+      deliveryNotes: detailedNotes,
       paymentMethod,
       items,
+      deliveryCost: selectedZone.cost,
+      deliveryZoneName: selectedZone.name,
+      deliveryDate: new Date().toLocaleDateString("es-AR"),
+      deliveryTimeSlot: selectedTimeSlot,
     });
 
     setCheckoutLoading(false);
@@ -248,10 +306,7 @@ export default function ShopPublicPage() {
 
   const filteredProducts = selectedCategory === "TODAS" 
     ? products 
-    : products.filter((p) => {
-        // Find category reference
-        return true; // Simple bypass for filtering client-side
-      });
+    : products; // Bypass client filtering for simplicity
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden">
@@ -274,7 +329,7 @@ export default function ShopPublicPage() {
         {!isViandaStore && (
           <button 
             onClick={() => setIsCartOpen(true)}
-            className="p-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-full font-bold relative transition-all"
+            className="p-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
           >
             <ShoppingCart className="w-5 h-5" />
             {cart.length > 0 && (
@@ -370,8 +425,8 @@ export default function ShopPublicPage() {
             </div>
 
             {/* Checkout Form */}
-            <div className="glass-panel p-6 rounded-3xl border border-zinc-900 bg-zinc-900/10 h-fit">
-              <h3 className="text-lg font-black text-white mb-4">Confirmar Pedido</h3>
+            <div className="glass-panel p-6 rounded-3xl border border-zinc-900 bg-zinc-900/10 h-fit flex flex-col gap-4">
+              <h3 className="text-lg font-black text-white">Confirmar Pedido</h3>
               <form onSubmit={handleCheckoutWeeklyPlanner} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Nombre Completo</label>
@@ -389,6 +444,43 @@ export default function ShopPublicPage() {
                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Dirección de Entrega</label>
                   <input type="text" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none" />
                 </div>
+
+                {/* Delivery Zone Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-amber-500" /> Zona de Entrega / Envío
+                  </label>
+                  <select 
+                    value={JSON.stringify(selectedZone)} 
+                    onChange={(e) => setSelectedZone(JSON.parse(e.target.value))}
+                    className="bg-zinc-950 border border-zinc-900 text-xs p-3 rounded-xl text-white outline-none"
+                  >
+                    {DEFAULT_ZONES.map((zone) => (
+                      <option key={zone.name} value={JSON.stringify(zone)}>
+                        {zone.name} (+${zone.cost})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Delivery Time Slot Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" /> Fecha y Hora de Entrega
+                  </label>
+                  <select 
+                    value={selectedTimeSlot} 
+                    onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                    className="bg-zinc-950 border border-zinc-900 text-xs p-3 rounded-xl text-white outline-none"
+                  >
+                    {TIME_SLOTS.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Método de Pago</label>
                   <select value={paymentMethod} onChange={(e: any) => setPaymentMethod(e.target.value)} className="bg-zinc-950 border border-zinc-900 text-xs p-3 rounded-xl text-white outline-none">
@@ -400,6 +492,11 @@ export default function ShopPublicPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Aclaraciones de envío</label>
                   <textarea value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none resize-none h-16" />
+                </div>
+
+                <div className="border-t border-zinc-900 pt-4 mt-2 flex justify-between font-black text-sm text-zinc-200">
+                  <span>Costo Envío:</span>
+                  <span className="text-amber-500">${selectedZone.cost}</span>
                 </div>
 
                 <PremiumButton type="submit" variant="primary" size="lg" disabled={checkoutLoading} glow className="w-full justify-center py-4 mt-2">
@@ -415,11 +512,7 @@ export default function ShopPublicPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
               <button 
                 onClick={() => setSelectedCategory("TODAS")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 ${
-                  selectedCategory === "TODAS"
-                    ? "bg-amber-500 border-amber-500 text-zinc-950"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
-                }`}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 bg-amber-500 border-amber-500 text-zinc-950 cursor-pointer"
               >
                 Todas las categorías
               </button>
@@ -427,7 +520,7 @@ export default function ShopPublicPage() {
                 <button
                   key={c.id}
                   onClick={() => setSelectedCategory(c.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 cursor-pointer ${
                     selectedCategory === c.id
                       ? "bg-amber-500 border-amber-500 text-zinc-950"
                       : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
@@ -465,7 +558,7 @@ export default function ShopPublicPage() {
             {/* Header */}
             <div className="p-6 border-b border-zinc-900 flex items-center justify-between">
               <h3 className="text-lg font-black text-white flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-amber-500" /> Mi Carrito</h3>
-              <button onClick={() => setIsCartOpen(false)} className="p-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 rounded-lg"><X className="w-4 h-4" /></button>
+              <button onClick={() => setIsCartOpen(false)} className="p-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
 
             {/* Cart Items list */}
@@ -475,11 +568,11 @@ export default function ShopPublicPage() {
               ) : (
                 cart.map((item, idx) => (
                   <div key={idx} className="flex gap-4 p-3 rounded-xl bg-zinc-900/40 border border-zinc-900 relative">
-                    <img src={item.product.image} alt={item.product.name} className="w-14 h-14 rounded-lg object-cover" />
+                    <img src={item.product.image} alt={item.product.name} className="w-14 h-14 rounded-lg object-cover bg-zinc-850" />
                     <div className="flex-1">
                       <h4 className="text-xs font-bold text-white">{item.product.name}</h4>
                       {item.options && Object.keys(item.options).length > 0 && (
-                        <div className="flex gap-1.5 mt-1">
+                        <div className="flex flex-wrap gap-1.5 mt-1">
                           {Object.entries(item.options).map(([k, v]) => (
                             <span key={k} className="text-[9px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 capitalize">{k}: {String(v)}</span>
                           ))}
@@ -490,7 +583,7 @@ export default function ShopPublicPage() {
                         <span className="text-xs font-bold text-amber-500">${item.product.price * item.quantity}</span>
                       </div>
                     </div>
-                    <button onClick={() => handleRemoveFromCart(idx)} className="absolute top-2 right-2 text-zinc-500 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleRemoveFromCart(idx)} className="absolute top-2 right-2 text-zinc-500 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))
               )}
@@ -498,18 +591,62 @@ export default function ShopPublicPage() {
 
             {/* Checkout Form & Total */}
             {cart.length > 0 && (
-              <div className="p-6 border-t border-zinc-900 bg-zinc-950/80 sticky bottom-0">
-                <div className="flex justify-between font-black text-sm text-white mb-4">
+              <div className="p-6 border-t border-zinc-900 bg-zinc-950/80 sticky bottom-0 flex flex-col gap-3">
+                <div className="flex justify-between text-xs text-zinc-400">
                   <span>Subtotal:</span>
-                  <span className="text-amber-500">${cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0)}</span>
+                  <span>${calculateSubtotal()}</span>
+                </div>
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Envío ({selectedZone.name}):</span>
+                  <span>${selectedZone.cost}</span>
+                </div>
+                <div className="flex justify-between font-black text-sm text-white border-t border-zinc-900 pt-2 mb-2">
+                  <span>Total final:</span>
+                  <span className="text-amber-500">${calculateTotal()}</span>
                 </div>
 
                 <form onSubmit={handleCheckoutCart} className="flex flex-col gap-3 text-xs">
                   <input type="text" placeholder="Nombre completo" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none" />
                   <input type="email" placeholder="Correo electrónico" required value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none" />
                   <input type="text" placeholder="Teléfono" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none" />
-                  <input type="text" placeholder="Dirección de envío / retiro" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none" />
+                  <input type="text" placeholder="Dirección de envío" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none" />
                   
+                  {/* Delivery Zone Selector */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-amber-500" /> Zona de Entrega / Envío
+                    </label>
+                    <select 
+                      value={JSON.stringify(selectedZone)} 
+                      onChange={(e) => setSelectedZone(JSON.parse(e.target.value))}
+                      className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none"
+                    >
+                      {DEFAULT_ZONES.map((zone) => (
+                        <option key={zone.name} value={JSON.stringify(zone)}>
+                          {zone.name} (+${zone.cost})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Delivery Time Slot Selector */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" /> Fecha y Hora de Entrega
+                    </label>
+                    <select 
+                      value={selectedTimeSlot} 
+                      onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none"
+                    >
+                      {TIME_SLOTS.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <select value={paymentMethod} onChange={(e: any) => setPaymentMethod(e.target.value)} className="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-white outline-none">
                     <option value="CASH">Efectivo</option>
                     <option value="TRANSFER">Transferencia</option>
