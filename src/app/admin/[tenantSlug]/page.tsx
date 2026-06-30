@@ -1749,7 +1749,8 @@ export default function AdminDashboardPage() {
                       <Palette className="w-4 h-4 text-amber-500" /> Ajuste Manual de Colores
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Primary Color Picker */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color Primario / Acento</label>
                         <div className="flex gap-2">
@@ -1766,8 +1767,22 @@ export default function AdminDashboardPage() {
                             className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
                           />
                         </div>
+                        {/* Swatches Grid */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {["#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#ef4444", "#8b5cf6", "#f43f5e", "#06b6d4", "#ffffff", "#000000"].map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setPrimaryColor(c)}
+                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              style={{ backgroundColor: c }}
+                              title={c}
+                            />
+                          ))}
+                        </div>
                       </div>
 
+                      {/* Background Color Picker */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Fondo</label>
                         <div className="flex gap-2">
@@ -1784,8 +1799,22 @@ export default function AdminDashboardPage() {
                             className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
                           />
                         </div>
+                        {/* Swatches Grid */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {["#09090b", "#062f22", "#0f172a", "#450a0a", "#fdf2f8", "#faf5ff", "#fafafa", "#0f172a", "#121212", "#ffffff"].map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setBackgroundColor(c)}
+                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              style={{ backgroundColor: c }}
+                              title={c}
+                            />
+                          ))}
+                        </div>
                       </div>
 
+                      {/* Text Color Picker */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Texto</label>
                         <div className="flex gap-2">
@@ -1801,6 +1830,19 @@ export default function AdminDashboardPage() {
                             onChange={(e) => setTextColor(e.target.value)}
                             className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
                           />
+                        </div>
+                        {/* Swatches Grid */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {["#ffffff", "#f8fafc", "#f0fdf4", "#e5e7eb", "#1f2937", "#18181b", "#3b0764", "#fef2f2", "#a1a1aa", "#000000"].map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setTextColor(c)}
+                              className="w-5 h-5 rounded-md border border-white/10 hover:scale-110 transition-transform cursor-pointer"
+                              style={{ backgroundColor: c }}
+                              title={c}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
