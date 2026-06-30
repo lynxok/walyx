@@ -8,18 +8,20 @@ generator client {
 }
 
 model Tenant {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  categories  Category[]
-  products    Product[]
-  customers   Customer[]
-  orders      Order[]
-  weeklyMenus WeeklyMenu[]
-  sizeCharts  SizeChart[]
+  id              String           @id @default(uuid())
+  name            String
+  slug            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  categories      Category[]
+  products        Product[]
+  customers       Customer[]
+  orders          Order[]
+  weeklyMenus     WeeklyMenu[]
+  sizeCharts      SizeChart[]
+  clothingBrands  ClothingBrand[]
+  clothingTypes   ClothingType[]
 }
 
 model Category {
@@ -151,18 +153,42 @@ model WeeklyMenuDay {
 
 // ─── Tablas de Talles (para rubro ROPA) ─────────────────────────────────────
 
-model SizeChart {
-  id              String         @id @default(uuid())
-  tenantId        String
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  brand           String         // Ej: "Levi's", "Nike", "Sin marca"
-  clothingType    String         // Ej: "Remeras", "Pantalones", "Calzado"
-  columns         String         // JSON: ["Talle","Pecho (cm)","Largo (cm)"]
-  rows            SizeChartRow[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+model ClothingBrand {
+  id        String      @id @default(uuid())
+  name      String
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  charts    SizeChart[]
+  createdAt DateTime    @default(now())
 
-  @@unique([tenantId, brand, clothingType])
+  @@unique([tenantId, name])
+}
+
+model ClothingType {
+  id        String      @id @default(uuid())
+  name      String
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  charts    SizeChart[]
+  createdAt DateTime    @default(now())
+
+  @@unique([tenantId, name])
+}
+
+model SizeChart {
+  id              String        @id @default(uuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brandId         String
+  brand           ClothingBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  clothingTypeId  String
+  clothingType    ClothingType  @relation(fields: [clothingTypeId], references: [id], onDelete: Cascade)
+  columns         String        // JSON: ["Talle","Pecho (cm)","Largo (cm)"]
+  rows            SizeChartRow[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([tenantId, brandId, clothingTypeId])
 }
 
 model SizeChartRow {

@@ -29,7 +29,7 @@ import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
 import { getProductsByTenant, createProduct, updateProduct, deleteProduct } from "@/app/actions/product";
 import { getWeeklyMenuByStartDate, saveWeeklyMenu } from "@/app/actions/weeklyMenu";
-import { getSizeCharts, createSizeChart, deleteSizeChart, addSizeChartRow, updateSizeChartRow, deleteSizeChartRow, type SizeChartWithRows } from "@/app/actions/sizeChart";
+import { getSizeCharts, createSizeChart, deleteSizeChart, addSizeChartRow, updateSizeChartRow, deleteSizeChartRow, getClothingBrands, createClothingBrand, deleteClothingBrand, getClothingTypes, createClothingType, deleteClothingType, type SizeChartWithRows, type ClothingBrandItem, type ClothingTypeItem } from "@/app/actions/sizeChart";
 import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
@@ -87,17 +87,26 @@ export default function AdminDashboardPage() {
   const [insumos, setInsumos] = useState<string[]>(["Harina 0000", "Pollo Pechuga", "Zanahoria fresca", "Dulce de Leche Repostero"]);
 
   // ─── Size Charts (Tablas de Talles) states ────────────────────────────────
-  const [sizeCharts, setSizeCharts] = useState<SizeChartWithRows[]>([]);
-  const [scActiveBrand, setScActiveBrand] = useState<string | null>(null);
+  const [sizeCharts, setSizeCharts]           = useState<SizeChartWithRows[]>([]);
+  const [clothingBrands, setClothingBrands]   = useState<ClothingBrandItem[]>([]);
+  const [clothingTypes, setClothingTypes]     = useState<ClothingTypeItem[]>([]);
+  const [scActiveBrandId, setScActiveBrandId] = useState<string | null>(null);
+  // Panel: "charts" | "config"
+  const [scPanel, setScPanel]                 = useState<"charts" | "config">("charts");
   // New chart form
-  const [scNewBrand, setScNewBrand] = useState("");
-  const [scNewType, setScNewType] = useState("");
-  const [scNewCols, setScNewCols] = useState("Talle, Pecho (cm), Largo (cm)");
-  const [scShowNewForm, setScShowNewForm] = useState(false);
-  const [scSaving, setScSaving] = useState(false);
-  const [scError, setScError] = useState("");
+  const [scNewBrandId, setScNewBrandId]       = useState("");
+  const [scNewTypeId, setScNewTypeId]         = useState("");
+  const [scNewCols, setScNewCols]             = useState<string[]>([]);
+  const [scNewColInput, setScNewColInput]     = useState("");
+  const [scShowNewForm, setScShowNewForm]     = useState(false);
+  const [scSaving, setScSaving]               = useState(false);
+  const [scError, setScError]                 = useState("");
+  // Config panel inputs
+  const [scBrandInput, setScBrandInput]       = useState("");
+  const [scTypeInput, setScTypeInput]         = useState("");
+  const [scConfigError, setScConfigError]     = useState("");
   // Inline row edit tracker: rowId -> values[]
-  const [scRowEdits, setScRowEdits] = useState<Record<string, string[]>>({});
+  const [scRowEdits, setScRowEdits]           = useState<Record<string, string[]>>({});
 
   // Cash Register states
   const [cashAmount, setCashAmount] = useState("0");
@@ -175,9 +184,16 @@ export default function AdminDashboardPage() {
       setStats(statsRes.data);
     }
 
-    const chartsData = await getSizeCharts(tenantRes.data.id);
+    const [chartsData, brandsData, typesData] = await Promise.all([
+      getSizeCharts(tenantRes.data.id),
+      getClothingBrands(tenantRes.data.id),
+      getClothingTypes(tenantRes.data.id),
+    ]);
     setSizeCharts(chartsData);
-    if (chartsData.length > 0) setScActiveBrand(chartsData[0].brand);
+    setClothingBrands(brandsData);
+    setClothingTypes(typesData);
+    if (chartsData.length > 0) setScActiveBrandId(chartsData[0].brandId);
+    else if (brandsData.length > 0) setScActiveBrandId(brandsData[0].id);
 
     setLoading(false);
   };
@@ -1061,215 +1077,384 @@ export default function AdminDashboardPage() {
           {/* TAB: TABLAS DE TALLES - only for ROPA */}
           {activeTab === "talles" && hasType === "ROPA" && (
             <div className="flex flex-col gap-6">
-              {/* Header */}
-              <div className="flex items-start justify-between">
+
+              {/* ── Header with panel toggle ─────────────────────────────── */}
+              <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-white">Tablas de Talles</h2>
-                  <p className="text-xs text-zinc-500 mt-0.5">Creá tablas por marca y tipo de indumentaria. Tus clientes las consultarán en la tienda pública.</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Gestioná marcas, tipos de indumentaria y sus medidas.</p>
                 </div>
-                <PremiumButton variant="primary" size="sm" onClick={() => { setScShowNewForm(true); setScError(""); }}>
-                  <Plus className="w-3.5 h-3.5" /> Nueva Tabla
-                </PremiumButton>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setScPanel("charts")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${scPanel === "charts" ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300"}`}
+                  >
+                    Tablas
+                  </button>
+                  <button
+                    onClick={() => { setScPanel("config"); setScConfigError(""); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${scPanel === "config" ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300"}`}
+                  >
+                    ⚙ Marcas y Tipos
+                  </button>
+                </div>
               </div>
 
-              {/* NEW CHART FORM */}
-              {scShowNewForm && (
-                <div className="glass-panel p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Nueva Tabla de Talles</h3>
-                  {scError && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{scError}</p>}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Marca</label>
+              {/* ── PANEL: CONFIGURACIÓN (Marcas + Tipos) ──────────────────── */}
+              {scPanel === "config" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  {/* Marcas */}
+                  <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                    <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">Marcas</h3>
+                    {scConfigError && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{scConfigError}</p>}
+                    <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Ej: Nike, Levi's, Sin marca..."
-                        value={scNewBrand}
-                        onChange={(e) => setScNewBrand(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-3 rounded-xl outline-none transition-colors"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Tipo de Indumentaria</label>
-                      <input
-                        type="text"
-                        placeholder="Ej: Remeras, Pantalones, Calzado..."
-                        value={scNewType}
-                        onChange={(e) => setScNewType(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-3 rounded-xl outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-zinc-400 text-[10px] font-bold uppercase">Columnas (separadas por coma)</label>
-                    <input
-                      type="text"
-                      value={scNewCols}
-                      onChange={(e) => setScNewCols(e.target.value)}
-                      className="bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-3 rounded-xl outline-none transition-colors"
-                    />
-                    <p className="text-zinc-600 text-[10px]">Ej: Talle, Pecho (cm), Manga (cm), Largo (cm)</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <PremiumButton
-                      variant="primary"
-                      size="sm"
-                      disabled={scSaving}
-                      onClick={async () => {
-                        setScSaving(true);
-                        setScError("");
-                        const cols = scNewCols.split(",").map((c) => c.trim()).filter(Boolean);
-                        const res = await createSizeChart(tenant.id, scNewBrand, scNewType, cols);
-                        if (res.ok) {
-                          const updated = await getSizeCharts(tenant.id);
-                          setSizeCharts(updated);
-                          setScActiveBrand(scNewBrand.trim());
-                          setScNewBrand(""); setScNewType(""); setScNewCols("Talle, Pecho (cm), Largo (cm)");
-                          setScShowNewForm(false);
-                        } else {
-                          setScError(res.error || "Error al crear la tabla.");
-                        }
-                        setScSaving(false);
-                      }}
-                    >
-                      {scSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Crear Tabla"}
-                    </PremiumButton>
-                    <PremiumButton variant="outline" size="sm" onClick={() => setScShowNewForm(false)}>Cancelar</PremiumButton>
-                  </div>
-                </div>
-              )}
-
-              {/* BRAND FILTER TABS */}
-              {sizeCharts.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {[...new Set(sizeCharts.map((c) => c.brand))].map((brand) => (
-                    <button
-                      key={brand}
-                      onClick={() => setScActiveBrand(brand)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        scActiveBrand === brand
-                          ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                          : "bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
-                      }`}
-                    >
-                      {brand}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* CHARTS FOR ACTIVE BRAND */}
-              {sizeCharts.length === 0 && (
-                <div className="glass-panel p-10 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col items-center justify-center gap-3">
-                  <Layers className="w-8 h-8 text-zinc-700" />
-                  <p className="text-zinc-500 text-sm">No hay tablas de talles creadas aún.</p>
-                  <PremiumButton variant="outline" size="sm" onClick={() => setScShowNewForm(true)}>
-                    Crear primera tabla
-                  </PremiumButton>
-                </div>
-              )}
-
-              {sizeCharts
-                .filter((c) => c.brand === scActiveBrand)
-                .map((chart) => (
-                  <div key={chart.id} className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                    {/* Chart header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">{chart.brand} — {chart.clothingType}</h3>
-                        <p className="text-zinc-600 text-[10px] mt-0.5">{chart.columns.length} columnas · {chart.rows.length} filas</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          if (!confirm(`¿Eliminar la tabla "${chart.brand} - ${chart.clothingType}"?`)) return;
-                          await deleteSizeChart(chart.id);
-                          const updated = await getSizeCharts(tenant.id);
-                          setSizeCharts(updated);
-                          if (updated.length > 0) setScActiveBrand(updated[0].brand);
-                          else setScActiveBrand(null);
+                        placeholder="Nueva marca (ej: Nike, Levi's...)"
+                        value={scBrandInput}
+                        onChange={(e) => setScBrandInput(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && scBrandInput.trim()) {
+                            const res = await createClothingBrand(tenant.id, scBrandInput);
+                            if (res.ok) {
+                              const updated = await getClothingBrands(tenant.id);
+                              setClothingBrands(updated);
+                              setScBrandInput("");
+                            } else setScConfigError(res.error || "Error");
+                          }
                         }}
-                        className="text-red-500/50 hover:text-red-400 text-[10px] font-semibold flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" /> Eliminar tabla
-                      </button>
+                        className="flex-1 bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-2.5 rounded-xl outline-none transition-colors"
+                      />
+                      <PremiumButton variant="primary" size="sm" onClick={async () => {
+                        if (!scBrandInput.trim()) return;
+                        const res = await createClothingBrand(tenant.id, scBrandInput);
+                        if (res.ok) { const u = await getClothingBrands(tenant.id); setClothingBrands(u); setScBrandInput(""); }
+                        else setScConfigError(res.error || "Error");
+                      }}>
+                        <Plus className="w-3.5 h-3.5" />
+                      </PremiumButton>
                     </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-zinc-800">
-                            {chart.columns.map((col) => (
-                              <th key={col} className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 pr-4 text-[10px]">{col}</th>
-                            ))}
-                            <th className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 text-[10px]">Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {chart.rows.map((row) => {
-                            const editing = scRowEdits[row.id] ?? row.values;
-                            return (
-                              <tr key={row.id} className="border-b border-zinc-900/50 hover:bg-zinc-900/20 transition-colors group">
-                                {chart.columns.map((_, ci) => (
-                                  <td key={ci} className="py-2 pr-4">
-                                    <input
-                                      type="text"
-                                      value={editing[ci] ?? ""}
-                                      onChange={(e) => {
-                                        const newVals = [...editing];
-                                        newVals[ci] = e.target.value;
-                                        setScRowEdits((prev) => ({ ...prev, [row.id]: newVals }));
-                                      }}
-                                      onBlur={async () => {
-                                        if (JSON.stringify(editing) !== JSON.stringify(row.values)) {
-                                          await updateSizeChartRow(row.id, editing);
-                                          const updated = await getSizeCharts(tenant.id);
-                                          setSizeCharts(updated);
-                                          setScRowEdits((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
-                                        }
-                                      }}
-                                      className="bg-transparent border-b border-zinc-800 focus:border-amber-500 text-white text-xs py-1 outline-none w-full transition-colors min-w-[60px]"
-                                    />
-                                  </td>
-                                ))}
-                                <td className="py-2">
-                                  <button
-                                    onClick={async () => {
-                                      await deleteSizeChartRow(row.id);
-                                      const updated = await getSizeCharts(tenant.id);
-                                      setSizeCharts(updated);
-                                    }}
-                                    className="text-red-500/50 hover:text-red-400 text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-all"
-                                  >
-                                    Eliminar
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                    <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                      {clothingBrands.length === 0 && <p className="text-zinc-600 text-xs text-center py-4">Sin marcas aún</p>}
+                      {clothingBrands.map((b) => (
+                        <div key={b.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-950/60 border border-zinc-900 group">
+                          <span className="text-white text-xs font-medium">{b.name}</span>
+                          <button
+                            onClick={async () => {
+                              await deleteClothingBrand(b.id);
+                              const u = await getClothingBrands(tenant.id);
+                              setClothingBrands(u);
+                            }}
+                            className="text-red-500/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          ><Trash2 className="w-3 h-3" /></button>
+                        </div>
+                      ))}
                     </div>
+                  </div>
 
-                    {/* Add row */}
-                    <PremiumButton
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const emptyRow = chart.columns.map(() => "");
-                        await addSizeChartRow(chart.id, emptyRow);
-                        const updated = await getSizeCharts(tenant.id);
-                        setSizeCharts(updated);
-                      }}
-                    >
-                      <Plus className="w-3 h-3" /> Agregar fila
+                  {/* Tipos de indumentaria */}
+                  <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                    <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">Tipos de Indumentaria</h3>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nuevo tipo (ej: Remeras, Calzado...)"
+                        value={scTypeInput}
+                        onChange={(e) => setScTypeInput(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && scTypeInput.trim()) {
+                            const res = await createClothingType(tenant.id, scTypeInput);
+                            if (res.ok) { const u = await getClothingTypes(tenant.id); setClothingTypes(u); setScTypeInput(""); }
+                            else setScConfigError(res.error || "Error");
+                          }
+                        }}
+                        className="flex-1 bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-2.5 rounded-xl outline-none transition-colors"
+                      />
+                      <PremiumButton variant="primary" size="sm" onClick={async () => {
+                        if (!scTypeInput.trim()) return;
+                        const res = await createClothingType(tenant.id, scTypeInput);
+                        if (res.ok) { const u = await getClothingTypes(tenant.id); setClothingTypes(u); setScTypeInput(""); }
+                        else setScConfigError(res.error || "Error");
+                      }}>
+                        <Plus className="w-3.5 h-3.5" />
+                      </PremiumButton>
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                      {clothingTypes.length === 0 && <p className="text-zinc-600 text-xs text-center py-4">Sin tipos aún</p>}
+                      {clothingTypes.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-950/60 border border-zinc-900 group">
+                          <span className="text-white text-xs font-medium">{t.name}</span>
+                          <button
+                            onClick={async () => {
+                              await deleteClothingType(t.id);
+                              const u = await getClothingTypes(tenant.id);
+                              setClothingTypes(u);
+                            }}
+                            className="text-red-500/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          ><Trash2 className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── PANEL: TABLAS ───────────────────────────────────────────── */}
+              {scPanel === "charts" && (
+                <div className="flex flex-col gap-6">
+
+                  {/* Action bar */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2 flex-wrap">
+                      {clothingBrands.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => setScActiveBrandId(b.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            scActiveBrandId === b.id
+                              ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                              : "bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
+                          }`}
+                        >
+                          {b.name}
+                        </button>
+                      ))}
+                      {clothingBrands.length === 0 && (
+                        <p className="text-xs text-zinc-600">Primero agregá marcas en <button onClick={() => setScPanel("config")} className="text-amber-500 underline">⚙ Marcas y Tipos</button></p>
+                      )}
+                    </div>
+                    <PremiumButton variant="primary" size="sm" onClick={() => { setScShowNewForm(true); setScError(""); setScNewCols([]); setScNewColInput(""); setScNewBrandId(""); setScNewTypeId(""); }}>
+                      <Plus className="w-3.5 h-3.5" /> Nueva Tabla
                     </PremiumButton>
                   </div>
-                ))}
+
+                  {/* NEW CHART FORM */}
+                  {scShowNewForm && (
+                    <div className="glass-panel p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex flex-col gap-5">
+                      <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Nueva Tabla de Talles</h3>
+                      {scError && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{scError}</p>}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Marca - dropdown */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-zinc-400 text-[10px] font-bold uppercase">Marca</label>
+                          <select
+                            value={scNewBrandId}
+                            onChange={(e) => setScNewBrandId(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-3 rounded-xl outline-none transition-colors appearance-none cursor-pointer"
+                          >
+                            <option value="">— Seleccioná una marca —</option>
+                            {clothingBrands.map((b) => (
+                              <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                          </select>
+                          {clothingBrands.length === 0 && (
+                            <p className="text-zinc-600 text-[10px]">Sin marcas. <button onClick={() => { setScShowNewForm(false); setScPanel("config"); }} className="text-amber-500 underline">Agregar en ⚙ Marcas y Tipos</button></p>
+                          )}
+                        </div>
+                        {/* Tipo - dropdown */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-zinc-400 text-[10px] font-bold uppercase">Tipo de Indumentaria</label>
+                          <select
+                            value={scNewTypeId}
+                            onChange={(e) => setScNewTypeId(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-3 rounded-xl outline-none transition-colors appearance-none cursor-pointer"
+                          >
+                            <option value="">— Seleccioná un tipo —</option>
+                            {clothingTypes.map((t) => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                          {clothingTypes.length === 0 && (
+                            <p className="text-zinc-600 text-[10px]">Sin tipos. <button onClick={() => { setScShowNewForm(false); setScPanel("config"); }} className="text-amber-500 underline">Agregar en ⚙ Marcas y Tipos</button></p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Columnas / Medidas con botón Agregar */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-zinc-400 text-[10px] font-bold uppercase">Columnas / Medidas</label>
+                        {/* Chips */}
+                        <div className="flex flex-wrap gap-2 min-h-[32px]">
+                          {scNewCols.map((col, i) => (
+                            <span key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+                              {col}
+                              <button
+                                onClick={() => setScNewCols(scNewCols.filter((_, idx) => idx !== i))}
+                                className="text-amber-400/60 hover:text-red-400 transition-colors"
+                              >×</button>
+                            </span>
+                          ))}
+                          {scNewCols.length === 0 && <span className="text-zinc-600 text-xs italic">Sin columnas aún…</span>}
+                        </div>
+                        {/* Input + Agregar */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Ej: Talle, Pecho (cm), Largo (cm)..."
+                            value={scNewColInput}
+                            onChange={(e) => setScNewColInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && scNewColInput.trim()) {
+                                setScNewCols([...scNewCols, scNewColInput.trim()]);
+                                setScNewColInput("");
+                              }
+                            }}
+                            className="flex-1 bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white text-xs p-2.5 rounded-xl outline-none transition-colors"
+                          />
+                          <PremiumButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (scNewColInput.trim()) {
+                                setScNewCols([...scNewCols, scNewColInput.trim()]);
+                                setScNewColInput("");
+                              }
+                            }}
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Agregar
+                          </PremiumButton>
+                        </div>
+                        <p className="text-zinc-600 text-[10px]">También podés presionar Enter para agregar cada columna.</p>
+                      </div>
+
+                      <div className="flex gap-3 pt-1">
+                        <PremiumButton
+                          variant="primary"
+                          size="sm"
+                          disabled={scSaving}
+                          onClick={async () => {
+                            setScSaving(true);
+                            setScError("");
+                            const res = await createSizeChart(tenant.id, scNewBrandId, scNewTypeId, scNewCols);
+                            if (res.ok) {
+                              const [updatedCharts] = await Promise.all([getSizeCharts(tenant.id)]);
+                              setSizeCharts(updatedCharts);
+                              setScActiveBrandId(scNewBrandId);
+                              setScShowNewForm(false);
+                            } else {
+                              setScError(res.error || "Error al crear la tabla.");
+                            }
+                            setScSaving(false);
+                          }}
+                        >
+                          {scSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Crear Tabla"}
+                        </PremiumButton>
+                        <PremiumButton variant="outline" size="sm" onClick={() => setScShowNewForm(false)}>Cancelar</PremiumButton>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {sizeCharts.length === 0 && !scShowNewForm && (
+                    <div className="glass-panel p-10 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col items-center justify-center gap-3">
+                      <Layers className="w-8 h-8 text-zinc-700" />
+                      <p className="text-zinc-500 text-sm">No hay tablas creadas aún.</p>
+                      {clothingBrands.length === 0
+                        ? <PremiumButton variant="outline" size="sm" onClick={() => setScPanel("config")}>Primero configurá marcas y tipos →</PremiumButton>
+                        : <PremiumButton variant="outline" size="sm" onClick={() => setScShowNewForm(true)}>Crear primera tabla</PremiumButton>
+                      }
+                    </div>
+                  )}
+
+                  {/* Charts list filtered by active brand */}
+                  {sizeCharts
+                    .filter((c) => c.brandId === scActiveBrandId)
+                    .map((chart) => (
+                      <div key={chart.id} className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">{chart.brandName} — {chart.clothingTypeName}</h3>
+                            <p className="text-zinc-600 text-[10px] mt-0.5">{chart.columns.length} columnas · {chart.rows.length} filas</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`¿Eliminar la tabla "${chart.brandName} - ${chart.clothingTypeName}"?`)) return;
+                              await deleteSizeChart(chart.id);
+                              const updated = await getSizeCharts(tenant.id);
+                              setSizeCharts(updated);
+                            }}
+                            className="text-red-500/50 hover:text-red-400 text-[10px] font-semibold flex items-center gap-1 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" /> Eliminar tabla
+                          </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-zinc-800">
+                                {chart.columns.map((col) => (
+                                  <th key={col} className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 pr-4 text-[10px]">{col}</th>
+                                ))}
+                                <th className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 text-[10px]"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {chart.rows.map((row) => {
+                                const editing = scRowEdits[row.id] ?? row.values;
+                                return (
+                                  <tr key={row.id} className="border-b border-zinc-900/50 hover:bg-zinc-900/20 transition-colors group">
+                                    {chart.columns.map((_, ci) => (
+                                      <td key={ci} className="py-2 pr-4">
+                                        <input
+                                          type="text"
+                                          value={editing[ci] ?? ""}
+                                          onChange={(e) => {
+                                            const newVals = [...editing];
+                                            newVals[ci] = e.target.value;
+                                            setScRowEdits((prev) => ({ ...prev, [row.id]: newVals }));
+                                          }}
+                                          onBlur={async () => {
+                                            if (JSON.stringify(editing) !== JSON.stringify(row.values)) {
+                                              await updateSizeChartRow(row.id, editing);
+                                              const updated = await getSizeCharts(tenant.id);
+                                              setSizeCharts(updated);
+                                              setScRowEdits((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
+                                            }
+                                          }}
+                                          className="bg-transparent border-b border-zinc-800 focus:border-amber-500 text-white text-xs py-1 outline-none w-full transition-colors min-w-[60px]"
+                                        />
+                                      </td>
+                                    ))}
+                                    <td className="py-2">
+                                      <button
+                                        onClick={async () => { await deleteSizeChartRow(row.id); const updated = await getSizeCharts(tenant.id); setSizeCharts(updated); }}
+                                        className="text-red-500/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                      ><Trash2 className="w-3 h-3" /></button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <PremiumButton
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            const emptyRow = chart.columns.map(() => "");
+                            await addSizeChartRow(chart.id, emptyRow);
+                            const updated = await getSizeCharts(tenant.id);
+                            setSizeCharts(updated);
+                          }}
+                        >
+                          <Plus className="w-3 h-3" /> Agregar fila
+                        </PremiumButton>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
             </div>
           )}
 
 
+
           {/* TAB 6: CASH REGISTER CLOSE */}
+
           {activeTab === "cash" && (
 
             <div className="flex flex-col gap-6">

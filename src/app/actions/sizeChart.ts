@@ -1,31 +1,110 @@
 "use server";
 
-import { db as prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+export type ClothingBrandItem = { id: string; name: string };
+export type ClothingTypeItem  = { id: string; name: string };
 
 export type SizeChartWithRows = {
   id: string;
-  brand: string;
-  clothingType: string;
+  brandId: string;
+  brandName: string;
+  clothingTypeId: string;
+  clothingTypeName: string;
   columns: string[];
   rows: { id: string; values: string[]; order: number }[];
 };
 
-// ─── Get all size charts for a tenant ─────────────────────────────────────────
+// ─── Clothing Brands ──────────────────────────────────────────────────────
+
+export async function getClothingBrands(tenantId: string): Promise<ClothingBrandItem[]> {
+  return db.clothingBrand.findMany({
+    where: { tenantId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export async function createClothingBrand(
+  tenantId: string,
+  name: string
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  if (!name.trim()) return { ok: false, error: "El nombre es obligatorio." };
+  try {
+    const b = await db.clothingBrand.create({ data: { tenantId, name: name.trim() } });
+    return { ok: true, id: b.id };
+  } catch {
+    return { ok: false, error: "Ya existe una marca con ese nombre." };
+  }
+}
+
+export async function deleteClothingBrand(
+  id: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await db.clothingBrand.delete({ where: { id } });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo eliminar la marca." };
+  }
+}
+
+// ─── Clothing Types ───────────────────────────────────────────────────────
+
+export async function getClothingTypes(tenantId: string): Promise<ClothingTypeItem[]> {
+  return db.clothingType.findMany({
+    where: { tenantId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export async function createClothingType(
+  tenantId: string,
+  name: string
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  if (!name.trim()) return { ok: false, error: "El nombre es obligatorio." };
+  try {
+    const t = await db.clothingType.create({ data: { tenantId, name: name.trim() } });
+    return { ok: true, id: t.id };
+  } catch {
+    return { ok: false, error: "Ya existe un tipo con ese nombre." };
+  }
+}
+
+export async function deleteClothingType(
+  id: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await db.clothingType.delete({ where: { id } });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo eliminar el tipo." };
+  }
+}
+
+// ─── Size Charts ──────────────────────────────────────────────────────────
 
 export async function getSizeCharts(tenantId: string): Promise<SizeChartWithRows[]> {
-  const charts = await prisma.sizeChart.findMany({
+  const charts = await db.sizeChart.findMany({
     where: { tenantId },
-    include: { rows: { orderBy: { order: "asc" } } },
-    orderBy: [{ brand: "asc" }, { clothingType: "asc" }],
+    include: {
+      brand: true,
+      clothingType: true,
+      rows: { orderBy: { order: "asc" } },
+    },
+    orderBy: [{ brand: { name: "asc" } }, { clothingType: { name: "asc" } }],
   });
 
   return charts.map((c) => ({
     id: c.id,
-    brand: c.brand,
-    clothingType: c.clothingType,
+    brandId: c.brandId,
+    brandName: c.brand.name,
+    clothingTypeId: c.clothingTypeId,
+    clothingTypeName: c.clothingType.name,
     columns: JSON.parse(c.columns) as string[],
     rows: (c.rows as Array<{ id: string; values: string; order: number }>).map((r) => ({
       id: r.id,
@@ -35,25 +114,21 @@ export async function getSizeCharts(tenantId: string): Promise<SizeChartWithRows
   }));
 }
 
-// ─── Create a new size chart ──────────────────────────────────────────────────
-
 export async function createSizeChart(
   tenantId: string,
-  brand: string,
-  clothingType: string,
+  brandId: string,
+  clothingTypeId: string,
   columns: string[]
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
-  if (!brand.trim() || !clothingType.trim() || columns.length < 1) {
-    return { ok: false, error: "Marca, tipo y columnas son obligatorios." };
-  }
-
+  if (!brandId || !clothingTypeId || columns.length < 1)
+    return { ok: false, error: "Marca, tipo y al menos una columna son obligatorios." };
   try {
-    const chart = await prisma.sizeChart.create({
+    const chart = await db.sizeChart.create({
       data: {
         tenantId,
-        brand: brand.trim(),
-        clothingType: clothingType.trim(),
-        columns: JSON.stringify(columns.map((c) => c.trim()).filter(Boolean)),
+        brandId,
+        clothingTypeId,
+        columns: JSON.stringify(columns.filter(Boolean)),
       },
     });
     revalidatePath(`/admin`);
@@ -63,37 +138,11 @@ export async function createSizeChart(
   }
 }
 
-// ─── Update chart metadata (brand / clothingType / columns) ──────────────────
-
-export async function updateSizeChart(
-  chartId: string,
-  brand: string,
-  clothingType: string,
-  columns: string[]
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await prisma.sizeChart.update({
-      where: { id: chartId },
-      data: {
-        brand: brand.trim(),
-        clothingType: clothingType.trim(),
-        columns: JSON.stringify(columns.map((c) => c.trim()).filter(Boolean)),
-      },
-    });
-    revalidatePath(`/admin`);
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "Error al actualizar la tabla." };
-  }
-}
-
-// ─── Delete a size chart (cascades rows) ─────────────────────────────────────
-
 export async function deleteSizeChart(
   chartId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await prisma.sizeChart.delete({ where: { id: chartId } });
+    await db.sizeChart.delete({ where: { id: chartId } });
     revalidatePath(`/admin`);
     return { ok: true };
   } catch {
@@ -101,25 +150,17 @@ export async function deleteSizeChart(
   }
 }
 
-// ─── Add a row to a chart ────────────────────────────────────────────────────
-
 export async function addSizeChartRow(
   chartId: string,
   values: string[]
 ): Promise<{ ok: boolean; error?: string; rowId?: string }> {
   try {
-    const lastRow = await prisma.sizeChartRow.findFirst({
+    const lastRow = await db.sizeChartRow.findFirst({
       where: { chartId },
       orderBy: { order: "desc" },
     });
-    const nextOrder = lastRow ? lastRow.order + 1 : 0;
-
-    const row = await prisma.sizeChartRow.create({
-      data: {
-        chartId,
-        values: JSON.stringify(values),
-        order: nextOrder,
-      },
+    const row = await db.sizeChartRow.create({
+      data: { chartId, values: JSON.stringify(values), order: lastRow ? lastRow.order + 1 : 0 },
     });
     return { ok: true, rowId: row.id };
   } catch {
@@ -127,30 +168,23 @@ export async function addSizeChartRow(
   }
 }
 
-// ─── Update a row ────────────────────────────────────────────────────────────
-
 export async function updateSizeChartRow(
   rowId: string,
   values: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await prisma.sizeChartRow.update({
-      where: { id: rowId },
-      data: { values: JSON.stringify(values) },
-    });
+    await db.sizeChartRow.update({ where: { id: rowId }, data: { values: JSON.stringify(values) } });
     return { ok: true };
   } catch {
     return { ok: false, error: "Error al actualizar la fila." };
   }
 }
 
-// ─── Delete a row ────────────────────────────────────────────────────────────
-
 export async function deleteSizeChartRow(
   rowId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await prisma.sizeChartRow.delete({ where: { id: rowId } });
+    await db.sizeChartRow.delete({ where: { id: rowId } });
     return { ok: true };
   } catch {
     return { ok: false, error: "Error al eliminar la fila." };
