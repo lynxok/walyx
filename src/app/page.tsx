@@ -60,7 +60,13 @@ export default function Home() {
           <img src="/walyx-logo.png" alt="Walyx Symbol" className="h-12 w-auto object-contain" />
           <img src="/walyx-texto.png" alt="Walyx Text" className="h-11 w-auto object-contain mt-1" />
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/login">
+            <PremiumButton variant="ghost" size="md">
+              Ingresar
+            </PremiumButton>
+          </Link>
+          <div className="w-px h-5 bg-white/10" />
           <Link href="/onboarding">
             <PremiumButton variant="primary" size="md" glow>
               Registrar mi Negocio
