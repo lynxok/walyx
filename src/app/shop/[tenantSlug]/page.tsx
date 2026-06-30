@@ -435,7 +435,15 @@ export default function ShopPublicPage() {
       style={{
         backgroundColor: backgroundColor,
         color: textColor,
-        fontFamily: fontFamily === "Outfit" ? "Outfit, sans-serif" : fontFamily === "Geist" ? "Geist, sans-serif" : fontFamily === "Playfair Display" ? "'Playfair Display', serif" : "Inter, sans-serif",
+        fontFamily: 
+          fontFamily === "Outfit" ? "Outfit, sans-serif" : 
+          fontFamily === "Geist" ? "Geist, sans-serif" : 
+          fontFamily === "Playfair Display" ? "'Playfair Display', serif" : 
+          fontFamily === "Montserrat" ? "'Montserrat', sans-serif" :
+          fontFamily === "Poppins" ? "'Poppins', sans-serif" :
+          fontFamily === "Cinzel" ? "'Cinzel', serif" :
+          fontFamily === "Caveat" ? "'Caveat', cursive" :
+          "Inter, sans-serif",
         // Inject color theme values as CSS variables so components like PremiumButton can inherit them
         ["--primary-theme-color" as any]: primaryColor,
         ["--text-theme-color" as any]: textColor,

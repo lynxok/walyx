@@ -1711,7 +1711,42 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2 pt-2 flex items-center gap-2">
-                      <Palette className="w-4 h-4 text-amber-500" /> Paleta de Colores
+                      <Palette className="w-4 h-4 text-amber-500" /> Paletas de Colores Predefinidas
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { name: "Ámbar Cyberpunk", primary: "#f59e0b", bg: "#09090b", text: "#ffffff" },
+                        { name: "Verde Orgánico", primary: "#10b981", bg: "#062f22", text: "#f0fdf4" },
+                        { name: "Rosa Dulce", primary: "#ec4899", bg: "#fdf2f8", text: "#1f2937" },
+                        { name: "Monocromo Elegante", primary: "#ffffff", bg: "#000000", text: "#e5e7eb" },
+                        { name: "Azul Eléctrico", primary: "#3b82f6", bg: "#0f172a", text: "#f8fafc" },
+                        { name: "Cereza Intenso", primary: "#ef4444", bg: "#450a0a", text: "#fef2f2" },
+                        { name: "Minimalista Claro", primary: "#18181b", bg: "#fafafa", text: "#18181b" },
+                        { name: "Lavanda Soft", primary: "#8b5cf6", bg: "#faf5ff", text: "#3b0764" }
+                      ].map((preset) => (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => {
+                            setPrimaryColor(preset.primary);
+                            setBackgroundColor(preset.bg);
+                            setTextColor(preset.text);
+                          }}
+                          className="flex flex-col gap-1 p-2.5 rounded-xl border border-zinc-900 hover:border-zinc-700 bg-zinc-950/40 text-left transition-all"
+                        >
+                          <span className="text-[10px] font-bold text-zinc-300 truncate">{preset.name}</span>
+                          <div className="flex gap-1 mt-1">
+                            <span className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: preset.primary }} />
+                            <span className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: preset.bg }} />
+                            <span className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: preset.text }} />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2 pt-2 flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-amber-500" /> Ajuste Manual de Colores
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1811,6 +1846,10 @@ export default function AdminDashboardPage() {
                           <option value="Geist">Geist Sans (Técnica & Limpia)</option>
                           <option value="Inter">Inter (Estándar & Neutra)</option>
                           <option value="Playfair Display">Playfair Display (Elegante & Serif)</option>
+                          <option value="Montserrat">Montserrat (Geométrica & Urbana)</option>
+                          <option value="Poppins">Poppins (Redonda & Amigable)</option>
+                          <option value="Cinzel">Cinzel (Clásica Romana)</option>
+                          <option value="Caveat">Caveat (Fantasía / Escrita a mano)</option>
                         </select>
                       </div>
                     </div>
@@ -1870,7 +1909,15 @@ export default function AdminDashboardPage() {
                       style={{
                         backgroundColor: backgroundColor,
                         color: textColor,
-                        fontFamily: fontFamily === "Outfit" ? "Outfit, sans-serif" : fontFamily === "Geist" ? "Geist, sans-serif" : fontFamily === "Playfair Display" ? "'Playfair Display', serif" : "Inter, sans-serif",
+                        fontFamily: 
+                          fontFamily === "Outfit" ? "Outfit, sans-serif" : 
+                          fontFamily === "Geist" ? "Geist, sans-serif" : 
+                          fontFamily === "Playfair Display" ? "'Playfair Display', serif" : 
+                          fontFamily === "Montserrat" ? "'Montserrat', sans-serif" :
+                          fontFamily === "Poppins" ? "'Poppins', sans-serif" :
+                          fontFamily === "Cinzel" ? "'Cinzel', serif" :
+                          fontFamily === "Caveat" ? "'Caveat', cursive" :
+                          "Inter, sans-serif",
                         height: "100%",
                       }}
                       className="flex-1 flex flex-col overflow-y-auto pt-8 pb-4 text-left transition-all"
