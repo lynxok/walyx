@@ -51,6 +51,16 @@ export default function ShopPublicPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Theme states
+  const [logoUrl, setLogoUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("#f59e0b");
+  const [backgroundColor, setBackgroundColor] = useState("#09090b");
+  const [layoutMode, setLayoutMode] = useState<"grid" | "list">("grid");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [fontFamily, setFontFamily] = useState("Outfit");
+  const [cardStyle, setCardStyle] = useState<"glass" | "classic" | "minimal">("glass");
+
   // Cart State (for Ropa/Pastelería)
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -122,6 +132,21 @@ export default function ShopPublicPage() {
 
     const tenantData = tenantRes.data;
     setTenant(tenantData);
+    setLogoUrl(tenantData.logoUrl || "");
+    setBannerUrl(tenantData.bannerUrl || "");
+    if (tenantData.themeSettings) {
+      try {
+        const theme = JSON.parse(tenantData.themeSettings);
+        if (theme.primaryColor) setPrimaryColor(theme.primaryColor);
+        if (theme.backgroundColor) setBackgroundColor(theme.backgroundColor);
+        if (theme.layoutMode) setLayoutMode(theme.layoutMode);
+        if (theme.textColor) setTextColor(theme.textColor);
+        if (theme.fontFamily) setFontFamily(theme.fontFamily);
+        if (theme.cardStyle) setCardStyle(theme.cardStyle);
+      } catch (e) {
+        console.error("Failed to parse theme settings:", e);
+      }
+    }
     setCategories(tenantData.categories || []);
 
     const productsRes = await getProductsByTenant(tenantData.id);
@@ -406,10 +431,28 @@ export default function ShopPublicPage() {
     : products; // Bypass client filtering for simplicity
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden">
+    <div
+      style={{
+        backgroundColor: backgroundColor,
+        color: textColor,
+        fontFamily: fontFamily === "Outfit" ? "Outfit, sans-serif" : fontFamily === "Geist" ? "Geist, sans-serif" : fontFamily === "Playfair Display" ? "'Playfair Display', serif" : "Inter, sans-serif",
+        // Inject color theme values as CSS variables so components like PremiumButton can inherit them
+        ["--primary-theme-color" as any]: primaryColor,
+        ["--text-theme-color" as any]: textColor,
+      }}
+      className="min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300"
+    >
       {/* Background Decorative Glow Orbs */}
-      <div className="absolute top-10 left-1/4 w-[350px] h-[350px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-20 right-1/4 w-[400px] h-[400px] bg-emerald-600/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-10 left-1/4 w-[350px] h-[350px] rounded-full blur-[120px] pointer-events-none" style={{ backgroundColor: `${primaryColor}0a` }} />
+      <div className="absolute bottom-20 right-1/4 w-[400px] h-[400px] rounded-full blur-[140px] pointer-events-none" style={{ backgroundColor: `${primaryColor}0a` }} />
+
+      {/* Banner de Portada */}
+      {bannerUrl && (
+        <div className="h-44 w-full relative overflow-hidden border-b border-zinc-900">
+          <img src={bannerUrl} alt="Store Banner" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/45" />
+        </div>
+      )}
 
       {/* Header bar */}
       <header className="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
@@ -417,6 +460,13 @@ export default function ShopPublicPage() {
           <Link href="/" className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
+          
+          {logoUrl && (
+            <div className="w-12 h-12 rounded-xl bg-zinc-950 border border-zinc-900 overflow-hidden shadow-md shrink-0">
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+            </div>
+          )}
+
           <div>
             <h1 className="text-lg font-black text-white">{tenant.name}</h1>
             <p className="text-xs text-zinc-500">{tenant.description || "Catálogo oficial"}</p>
@@ -426,7 +476,8 @@ export default function ShopPublicPage() {
         {!isViandaStore && (
           <button 
             onClick={() => setIsCartOpen(true)}
-            className="p-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
+            className="p-3 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
+            style={{ backgroundColor: primaryColor }}
           >
             <ShoppingCart className="w-5 h-5" />
             {cart.length > 0 && (
@@ -663,7 +714,12 @@ export default function ShopPublicPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
               <button 
                 onClick={() => setSelectedCategory("TODAS")}
-                className="px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 bg-amber-500 border-amber-500 text-zinc-950 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 cursor-pointer"
+                style={{
+                  backgroundColor: selectedCategory === "TODAS" ? primaryColor : "rgba(255,255,255,0.05)",
+                  color: selectedCategory === "TODAS" ? "#000000" : textColor,
+                  borderColor: selectedCategory === "TODAS" ? primaryColor : "rgba(255,255,255,0.1)",
+                }}
               >
                 Todas las categorías
               </button>
@@ -671,31 +727,90 @@ export default function ShopPublicPage() {
                 <button
                   key={c.id}
                   onClick={() => setSelectedCategory(c.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 cursor-pointer ${
-                    selectedCategory === c.id
-                      ? "bg-amber-500 border-amber-500 text-zinc-950"
-                      : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
-                  }`}
+                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 cursor-pointer"
+                  style={{
+                    backgroundColor: selectedCategory === c.id ? primaryColor : "rgba(255,255,255,0.05)",
+                    color: selectedCategory === c.id ? "#000000" : textColor,
+                    borderColor: selectedCategory === c.id ? primaryColor : "rgba(255,255,255,0.1)",
+                  }}
                 >
                   {c.name}
                 </button>
               ))}
             </div>
 
-            {/* Product Card Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.length === 0 ? (
-                <div className="col-span-3 text-center py-12 text-zinc-500 text-sm">No hay productos disponibles en esta categoría.</div>
-              ) : (
-                filteredProducts.map((p) => (
-                  <ProductCard 
-                    key={p.id} 
-                    product={p} 
-                    onAddToCart={handleAddToCart}
-                  />
-                ))
-              )}
-            </div>
+            {/* Product Card Layout (Grid or List based on theme settings) */}
+            {layoutMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.length === 0 ? (
+                  <div className="col-span-3 text-center py-12 text-zinc-500 text-sm">No hay productos disponibles en esta categoría.</div>
+                ) : (
+                  filteredProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        background: cardStyle === "glass" ? "rgba(255, 255, 255, 0.03)" : cardStyle === "classic" ? "transparent" : "rgba(255, 255, 255, 0.015)",
+                        borderColor: cardStyle === "classic" ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.05)",
+                        backdropFilter: cardStyle === "glass" ? "blur(12px)" : "none",
+                      }}
+                      className="rounded-3xl border overflow-hidden flex flex-col group h-full transition-all duration-350 hover:translate-y-[-2px]"
+                    >
+                      <ProductCard 
+                        product={p} 
+                        onAddToCart={handleAddToCart}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              // List layout mode
+              <div className="flex flex-col gap-4 max-w-4xl mx-auto w-full">
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500 text-sm">No hay productos disponibles en esta categoría.</div>
+                ) : (
+                  filteredProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        background: cardStyle === "glass" ? "rgba(255, 255, 255, 0.03)" : cardStyle === "classic" ? "transparent" : "rgba(255, 255, 255, 0.015)",
+                        borderColor: cardStyle === "classic" ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.05)",
+                        backdropFilter: cardStyle === "glass" ? "blur(12px)" : "none",
+                      }}
+                      className="rounded-2xl border p-4 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between transition-all duration-350"
+                    >
+                      <div className="flex gap-4 items-center flex-1 min-w-0">
+                        {p.image && (
+                          <img src={p.image} alt={p.name} className="w-16 h-16 rounded-xl object-cover bg-zinc-900 shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-sm text-zinc-100 truncate">{p.name}</h4>
+                          <p className="text-xs text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">{p.description}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex sm:flex-col items-end gap-3 sm:gap-1.5 w-full sm:w-auto justify-between border-t sm:border-t-0 border-zinc-900 pt-3 sm:pt-0 shrink-0">
+                        <span className="text-sm font-black" style={{ color: primaryColor }}>${p.price}</span>
+                        <PremiumButton
+                          variant="primary"
+                          size="sm"
+                          className="font-bold text-[10px] py-2 px-4 cursor-pointer"
+                          onClick={() => {
+                            const options: any = {};
+                            if (p.type === "clothing" && p.sizes) options.size = p.sizes[0];
+                            if (p.type === "clothing" && p.colors) options.color = p.colors[0];
+                            if (p.type === "bakery" && p.portions) options.portions = p.portions[0];
+                            handleAddToCart(p, options);
+                          }}
+                        >
+                          Añadir al Carrito
+                        </PremiumButton>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>

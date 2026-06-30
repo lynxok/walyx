@@ -33,6 +33,8 @@ import { getSizeCharts, createSizeChart, deleteSizeChart, addSizeChartRow, updat
 import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
+import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettings";
+import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const params = useParams();
@@ -41,6 +43,17 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [tenant, setTenant] = useState<any>(null);
+
+  // Shop Personalization Editor States
+  const [logoUrl, setLogoUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("#f59e0b");
+  const [backgroundColor, setBackgroundColor] = useState("#09090b");
+  const [layoutMode, setLayoutMode] = useState<"grid" | "list">("grid");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [fontFamily, setFontFamily] = useState("Outfit");
+  const [cardStyle, setCardStyle] = useState<"glass" | "classic" | "minimal">("glass");
+  const [savingSettings, setSavingSettings] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const hasType = categories.length > 0 ? categories[0].type : "VIANDA";
   const [products, setProducts] = useState<any[]>([]);
@@ -169,6 +182,21 @@ export default function AdminDashboardPage() {
     }
 
     setTenant(tenantRes.data);
+    setLogoUrl(tenantRes.data.logoUrl || "");
+    setBannerUrl(tenantRes.data.bannerUrl || "");
+    if (tenantRes.data.themeSettings) {
+      try {
+        const theme = JSON.parse(tenantRes.data.themeSettings) as ThemeSettings;
+        if (theme.primaryColor) setPrimaryColor(theme.primaryColor);
+        if (theme.backgroundColor) setBackgroundColor(theme.backgroundColor);
+        if (theme.layoutMode) setLayoutMode(theme.layoutMode);
+        if (theme.textColor) setTextColor(theme.textColor);
+        if (theme.fontFamily) setFontFamily(theme.fontFamily);
+        if (theme.cardStyle) setCardStyle(theme.cardStyle);
+      } catch (e) {
+        console.error("Failed to parse theme settings:", e);
+      }
+    }
     setCategories(tenantRes.data.categories || []);
 
     const productsRes = await getProductsByTenant(tenantRes.data.id);
@@ -545,6 +573,7 @@ export default function AdminDashboardPage() {
             ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
             ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
             { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
+            { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
             { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> }
           ].map((item) => (
             <button
@@ -1631,6 +1660,332 @@ export default function AdminDashboardPage() {
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: PERSONALIZE */}
+          {activeTab === "personalize" && (
+            <div className="flex flex-col gap-6 max-w-none">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-amber-500" /> Layout Designer & Tienda Live Preview
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Modifica la estética visual, colores, logos, banners y tipografías. Mira los cambios en tiempo real antes de guardar.
+                </p>
+              </div>
+
+              {/* Split Screen Panel */}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                
+                {/* Left side: Controls (7 cols) */}
+                <div className="xl:col-span-7 flex flex-col gap-6">
+                  <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-5">
+                    
+                    <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-amber-500" /> Identidad Visual
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">URL del Logo</label>
+                        <input
+                          type="text"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                          placeholder="https://ejemplo.com/logo.png"
+                          className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">URL del Banner de Portada</label>
+                        <input
+                          type="text"
+                          value={bannerUrl}
+                          onChange={(e) => setBannerUrl(e.target.value)}
+                          placeholder="https://ejemplo.com/banner.png"
+                          className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2 pt-2 flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-amber-500" /> Paleta de Colores
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color Primario / Acento</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Fondo</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={backgroundColor}
+                            onChange={(e) => setBackgroundColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={backgroundColor}
+                            onChange={(e) => setBackgroundColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Color de Texto</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={textColor}
+                            onChange={(e) => setTextColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 h-10 w-12 rounded-lg cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={textColor}
+                            onChange={(e) => setTextColor(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white px-3 rounded-lg outline-none flex-1 font-mono uppercase"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2 pt-2 flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-amber-500" /> Diseño y Estructura
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Modo de Layout</label>
+                        <select
+                          value={layoutMode}
+                          onChange={(e) => setLayoutMode(e.target.value as "grid" | "list")}
+                          className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                        >
+                          <option value="grid">Grilla de Tarjetas (Grid)</option>
+                          <option value="list">Lista Compacta (List)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Estilo de Tarjeta</label>
+                        <select
+                          value={cardStyle}
+                          onChange={(e) => setCardStyle(e.target.value as "glass" | "classic" | "minimal")}
+                          className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                        >
+                          <option value="glass">Vidrio Premium (Glassmorphism)</option>
+                          <option value="classic">Clásico con Borde</option>
+                          <option value="minimal">Minimalista Plano</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Tipografía Principal</label>
+                        <select
+                          value={fontFamily}
+                          onChange={(e) => setFontFamily(e.target.value)}
+                          className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                        >
+                          <option value="Outfit">Outfit (Moderna & Premium)</option>
+                          <option value="Geist">Geist Sans (Técnica & Limpia)</option>
+                          <option value="Inter">Inter (Estándar & Neutra)</option>
+                          <option value="Playfair Display">Playfair Display (Elegante & Serif)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end border-t border-zinc-900 pt-4 mt-2">
+                      <PremiumButton
+                        variant="primary"
+                        size="md"
+                        disabled={savingSettings}
+                        glow
+                        onClick={async () => {
+                          setSavingSettings(true);
+                          const res = await updateShopSettings(tenant.id, {
+                            logoUrl: logoUrl || null,
+                            bannerUrl: bannerUrl || null,
+                            themeSettings: {
+                              primaryColor,
+                              backgroundColor,
+                              layoutMode,
+                              textColor,
+                              fontFamily,
+                              cardStyle,
+                            },
+                          });
+                          setSavingSettings(false);
+                          if (res.success) {
+                            alert("¡Ajustes de personalización guardados exitosamente!");
+                            fetchData();
+                          } else {
+                            alert(res.error || "Error al guardar personalización.");
+                          }
+                        }}
+                      >
+                        {savingSettings ? "Guardando..." : "Guardar Personalización"}
+                      </PremiumButton>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Right side: Smartphone mock Live Preview (5 cols) */}
+                <div className="xl:col-span-5 flex flex-col items-center gap-4">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-500" /> Vista Previa en Vivo (Celular)
+                  </span>
+
+                  {/* Device Container Frame */}
+                  <div className="w-[320px] h-[580px] rounded-[40px] border-[10px] border-zinc-800 bg-zinc-950 relative shadow-2xl flex flex-col overflow-hidden select-none">
+                    
+                    {/* Speaker/Camera notch mock */}
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-zinc-800 rounded-full z-20 flex justify-center items-center">
+                      <div className="w-2.5 h-2.5 bg-black rounded-full ml-auto mr-4" />
+                    </div>
+
+                    {/* Simulating Custom Styles on the Preview Container */}
+                    <div
+                      style={{
+                        backgroundColor: backgroundColor,
+                        color: textColor,
+                        fontFamily: fontFamily === "Outfit" ? "Outfit, sans-serif" : fontFamily === "Geist" ? "Geist, sans-serif" : fontFamily === "Playfair Display" ? "'Playfair Display', serif" : "Inter, sans-serif",
+                        height: "100%",
+                      }}
+                      className="flex-1 flex flex-col overflow-y-auto pt-8 pb-4 text-left transition-all"
+                    >
+                      {/* Simulating Banner */}
+                      <div className="h-24 bg-zinc-900 relative overflow-hidden shrink-0 border-b border-white/5">
+                        {bannerUrl ? (
+                          <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-tr from-zinc-900 to-zinc-950 flex items-center justify-center text-[10px] text-zinc-650 italic">
+                            Banner de Portada
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30" />
+                        
+                        {/* Simulating Logo */}
+                        <div className="absolute bottom-2 left-4 w-12 h-12 rounded-xl bg-zinc-950 border-2 border-zinc-900 overflow-hidden shadow-md flex items-center justify-center">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] font-black" style={{ color: primaryColor }}>
+                              {tenant.name.substring(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Store Mock Header */}
+                      <div className="px-4 py-3 border-b border-white/5 flex flex-col gap-0.5">
+                        <h4 className="text-sm font-bold text-white">{tenant.name}</h4>
+                        <p className="text-[10px] text-zinc-400 line-clamp-1">{tenant.description || "Cocina Artesanal y Viandas Premium"}</p>
+                      </div>
+
+                      {/* Mock Store Catalog */}
+                      <div className="p-4 flex-1 flex flex-col gap-4">
+                        
+                        {/* Mock Category Chips */}
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 shrink-0">
+                          <span
+                            style={{ backgroundColor: primaryColor }}
+                            className="px-2.5 py-1 rounded-full text-[9px] font-black text-black"
+                          >
+                            Destacados
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-white/5 text-zinc-400 border border-white/10">
+                            Menú Diario
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-white/5 text-zinc-400 border border-white/10">
+                            Keto
+                          </span>
+                        </div>
+
+                        {/* Layout rendering dynamically inside mock */}
+                        {layoutMode === "grid" ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { id: 1, name: "Wok de Vegetales", price: 2900 },
+                              { id: 2, name: "Guiso de Lentejas", price: 3100 },
+                            ].map((prod) => (
+                              <div
+                                key={prod.id}
+                                style={{
+                                  background: cardStyle === "glass" ? "rgba(255, 255, 255, 0.03)" : cardStyle === "classic" ? "transparent" : "rgba(255, 255, 255, 0.02)",
+                                  borderColor: cardStyle === "classic" ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.05)",
+                                  backdropFilter: cardStyle === "glass" ? "blur(8px)" : "none",
+                                }}
+                                className="rounded-xl border p-2 flex flex-col gap-1.5"
+                              >
+                                <div className="h-16 w-full rounded-lg bg-white/5 relative overflow-hidden flex items-center justify-center text-[9px] text-zinc-600">
+                                  Imagen
+                                </div>
+                                <div>
+                                  <h5 className="text-[10px] font-black text-zinc-200 line-clamp-1">{prod.name}</h5>
+                                  <span className="text-[10px] font-black" style={{ color: primaryColor }}>
+                                    ${prod.price}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {[
+                              { id: 1, name: "Wok de Vegetales Especial", price: 2900 },
+                              { id: 2, name: "Guiso de Lentejas Vegano", price: 3100 },
+                            ].map((prod) => (
+                              <div
+                                key={prod.id}
+                                style={{
+                                  background: cardStyle === "glass" ? "rgba(255, 255, 255, 0.03)" : cardStyle === "classic" ? "transparent" : "rgba(255, 255, 255, 0.02)",
+                                  borderColor: cardStyle === "classic" ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.05)",
+                                  backdropFilter: cardStyle === "glass" ? "blur(8px)" : "none",
+                                }}
+                                className="rounded-xl border p-2.5 flex gap-3 items-center"
+                              >
+                                <div className="h-10 w-10 rounded-lg bg-white/5 shrink-0 flex items-center justify-center text-[8px] text-zinc-650">
+                                  Img
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-[10px] font-bold text-zinc-200 truncate">{prod.name}</h5>
+                                  <span className="text-[10px] font-black" style={{ color: primaryColor }}>
+                                    ${prod.price}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

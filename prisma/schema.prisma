@@ -14,6 +14,9 @@ model Tenant {
   description     String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  logoUrl         String?
+  bannerUrl       String?
+  themeSettings   String           @default("{\"primaryColor\":\"#f59e0b\",\"backgroundColor\":\"#09090b\",\"layoutMode\":\"grid\",\"textColor\":\"#ffffff\",\"fontFamily\":\"Outfit\",\"cardStyle\":\"glass\"}")
   categories      Category[]
   products        Product[]
   customers       Customer[]
