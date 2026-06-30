@@ -19,6 +19,7 @@ model Tenant {
   customers   Customer[]
   orders      Order[]
   weeklyMenus WeeklyMenu[]
+  sizeCharts  SizeChart[]
 }
 
 model Category {
@@ -146,4 +147,29 @@ model WeeklyMenuDay {
   updatedAt   DateTime   @updatedAt
 
   @@unique([menuId, dayName])
+}
+
+// ─── Tablas de Talles (para rubro ROPA) ─────────────────────────────────────
+
+model SizeChart {
+  id              String         @id @default(uuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand           String         // Ej: "Levi's", "Nike", "Sin marca"
+  clothingType    String         // Ej: "Remeras", "Pantalones", "Calzado"
+  columns         String         // JSON: ["Talle","Pecho (cm)","Largo (cm)"]
+  rows            SizeChartRow[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([tenantId, brand, clothingType])
+}
+
+model SizeChartRow {
+  id          String    @id @default(uuid())
+  chartId     String
+  chart       SizeChart @relation(fields: [chartId], references: [id], onDelete: Cascade)
+  values      String    // JSON: ["S","88-92","68"]
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
 }
