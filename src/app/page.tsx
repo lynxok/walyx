@@ -56,8 +56,9 @@ export default function Home() {
 
       {/* Navbar */}
       <header className="border-b border-white/5 bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <Link href="/" className="flex items-center gap-2">
-          <img src="/walyx-logo.png" alt="Walyx Logo" className="h-28 w-auto object-contain" />
+        <Link href="/" className="flex items-center gap-3">
+          <img src="/walyx-logo.png" alt="Walyx Symbol" className="h-16 w-auto object-contain" />
+          <img src="/walyx-texto.png" alt="Walyx Text" className="h-9 w-auto object-contain" />
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/onboarding">
@@ -382,8 +383,11 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-white/5 bg-zinc-950/80 py-10 px-6 text-center text-xs text-zinc-650 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img src="/walyx-logo.png" alt="Walyx Logo" className="h-24 w-auto object-contain opacity-95" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <img src="/walyx-logo.png" alt="Walyx Symbol" className="h-12 w-auto object-contain opacity-95" />
+              <img src="/walyx-texto.png" alt="Walyx Text" className="h-7.5 w-auto object-contain opacity-95" />
+            </div>
             <div className="text-left border-l border-zinc-800 pl-3">
               <p className="font-bold text-zinc-400">Walyx</p>
               <p className="text-[10px] text-zinc-600">SaaS de Venta conversacional</p>
