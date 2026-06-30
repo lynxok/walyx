@@ -19,6 +19,7 @@ import {
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
 import { createOrder } from "@/app/actions/order";
+import { getWeeklyMenuByStartDate } from "@/app/actions/weeklyMenu";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
 
@@ -53,7 +54,8 @@ export default function ShopPublicPage() {
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Weekly Planner State (for Viandas)
+  // Dynamic Weekly Planner States (for Viandas)
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
   const [weeklyPlanner, setWeeklyPlanner] = useState<Record<string, { productId: string; quantity: number; notes: string }>>({
     Lunes: { productId: "", quantity: 1, notes: "" },
     Martes: { productId: "", quantity: 1, notes: "" },
@@ -63,6 +65,35 @@ export default function ShopPublicPage() {
     Sábado: { productId: "", quantity: 1, notes: "" },
     Domingo: { productId: "", quantity: 1, notes: "" },
   });
+
+  const getPlanningWeeks = () => {
+    const weeks = [];
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const startMonday = new Date(today.setDate(diff));
+    startMonday.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 5; i++) {
+      const mon = new Date(startMonday);
+      mon.setDate(startMonday.getDate() + i * 7);
+      
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      
+      const formattedMon = mon.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+      const formattedSun = sun.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+      
+      weeks.push({
+        label: `Semana ${i + 1}`,
+        dateRange: `${formattedMon} al ${formattedSun}`,
+        startDateStr: mon.toISOString().split("T")[0],
+      });
+    }
+    return weeks;
+  };
+
+  const planningWeeks = getPlanningWeeks();
 
   // Checkout Form State
   const [customerName, setCustomerName] = useState("");
@@ -133,6 +164,50 @@ export default function ShopPublicPage() {
   useEffect(() => {
     fetchData();
   }, [tenantSlug]);
+
+  useEffect(() => {
+    const loadWeeklyMenuPlan = async () => {
+      const isViandaStore = categories.length > 0 && categories[0].type === "VIANDA";
+      if (!tenant || !isViandaStore || !products.length) return;
+      const currentWeek = planningWeeks[selectedWeekIndex];
+      const res = await getWeeklyMenuByStartDate(tenant.id, currentWeek.startDateStr);
+
+      const initialPlanner: any = {};
+      ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].forEach((day) => {
+        initialPlanner[day] = { productId: "", quantity: 1, notes: "" };
+      });
+
+      if (res.success && res.data && res.data.length > 0) {
+        res.data.forEach((dayItem: any) => {
+          if (initialPlanner[dayItem.dayName]) {
+            initialPlanner[dayItem.dayName].productId = dayItem.productId || "";
+          }
+        });
+      } else {
+        // Fallback to old defaults by name match
+        const oldDefaults: Record<string, string> = {
+          Lunes: "Wok de Pollo con Vegetales y Arroz Integral",
+          Martes: "Guiso Nutritivo de Lentejas Veggie",
+          Miércoles: "Salmón Grillado con Puré de Calabaza",
+          Jueves: "Wok de Pollo con Vegetales y Arroz Integral",
+          Viernes: "Guiso Nutritivo de Lentejas Veggie",
+          Sábado: "Salmón Grillado con Puré de Calabaza",
+          Domingo: "",
+        };
+
+        Object.entries(oldDefaults).forEach(([day, name]) => {
+          const match = products.find((p) => p.name === name);
+          if (match) {
+            initialPlanner[day].productId = match.id;
+          }
+        });
+      }
+
+      setWeeklyPlanner(initialPlanner);
+    };
+
+    loadWeeklyMenuPlan();
+  }, [selectedWeekIndex, tenant, products, categories]);
 
   const handleAddToCart = (prod: ProductData, options: any) => {
     setCart((prev) => {
@@ -257,6 +332,7 @@ export default function ShopPublicPage() {
       plannerSummary += `- ${day}: ${info.quantity}x ${p?.name} ${info.notes ? `(${info.notes})` : ""}\n`;
     });
 
+    const currentWeek = planningWeeks[selectedWeekIndex];
     const detailedNotes = `${plannerSummary}\nZona de Envío: ${selectedZone.name} (Costo: $${selectedZone.cost})\nFranja Horaria: ${selectedTimeSlot}\nNotas adicionales: ${deliveryNotes}`;
 
     const res = await createOrder({
@@ -270,7 +346,7 @@ export default function ShopPublicPage() {
       items,
       deliveryCost: selectedZone.cost,
       deliveryZoneName: selectedZone.name,
-      deliveryDate: new Date().toLocaleDateString("es-AR"),
+      deliveryDate: `${currentWeek.label} (${currentWeek.dateRange})`,
       deliveryTimeSlot: selectedTimeSlot,
     });
 
@@ -372,6 +448,30 @@ export default function ShopPublicPage() {
                 <div>
                   <h2 className="text-xl font-bold text-white">Planificador Semanal</h2>
                   <p className="text-xs text-zinc-500">Arma tu menú de viandas diarias y te las enviamos juntas.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Elegir Semana de Entrega</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {planningWeeks.map((w, idx) => {
+                    const isSelected = selectedWeekIndex === idx;
+                    return (
+                      <button
+                        key={w.startDateStr}
+                        type="button"
+                        onClick={() => setSelectedWeekIndex(idx)}
+                        className={`p-3 rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-500/10 border-amber-500 text-amber-500 font-bold"
+                            : "bg-zinc-950 border-zinc-900 hover:border-zinc-800 text-zinc-400"
+                        }`}
+                      >
+                        <span className="text-xs font-black">{w.label}</span>
+                        <span className="text-[9px] opacity-75 font-semibold">{w.dateRange}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

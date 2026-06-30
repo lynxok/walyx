@@ -28,6 +28,7 @@ import {
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
 import { getProductsByTenant, createProduct, updateProduct, deleteProduct } from "@/app/actions/product";
+import { getWeeklyMenuByStartDate, saveWeeklyMenu } from "@/app/actions/weeklyMenu";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 
@@ -90,16 +91,47 @@ export default function AdminDashboardPage() {
   const [cashDifference, setCashDifference] = useState<number | null>(null);
   const [cashCloseSuccess, setCashCloseSuccess] = useState(false);
 
-  // Weekly Menu states (for Viandas)
-  const [weeklyMenu, setWeeklyMenu] = useState<Record<string, string>>({
-    Lunes: "Wok de Pollo con Vegetales y Arroz Integral",
-    Martes: "Guiso Nutritivo de Lentejas Veggie",
-    Miércoles: "Salmón Grillado con Puré de Calabaza",
-    Jueves: "Wok de Pollo con Vegetales y Arroz Integral",
-    Viernes: "Guiso Nutritivo de Lentejas Veggie",
-    Sábado: "Salmón Grillado con Puré de Calabaza",
-    Domingo: "",
+  // Dynamic Weekly Menu states (for Viandas)
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+  const [weeklyMenuData, setWeeklyMenuData] = useState<Record<string, { productId: string; limit: number }>>({
+    Lunes: { productId: "", limit: 30 },
+    Martes: { productId: "", limit: 30 },
+    Miércoles: { productId: "", limit: 30 },
+    Jueves: { productId: "", limit: 30 },
+    Viernes: { productId: "", limit: 30 },
+    Sábado: { productId: "", limit: 30 },
+    Domingo: { productId: "", limit: 30 },
   });
+
+  const getPlanningWeeks = () => {
+    const weeks = [];
+    const today = new Date();
+    const day = today.getDay();
+    // Monday of current week
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const startMonday = new Date(today.setDate(diff));
+    startMonday.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 5; i++) {
+      const mon = new Date(startMonday);
+      mon.setDate(startMonday.getDate() + i * 7);
+      
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      
+      const formattedMon = mon.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+      const formattedSun = sun.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+      
+      weeks.push({
+        label: `Semana ${i + 1}`,
+        dateRange: `${formattedMon} al ${formattedSun}`,
+        startDateStr: mon.toISOString().split("T")[0],
+      });
+    }
+    return weeks;
+  };
+
+  const planningWeeks = getPlanningWeeks();
 
   const fetchData = async () => {
     setLoading(true);
@@ -252,7 +284,7 @@ export default function AdminDashboardPage() {
 
   const handleCalculateCashDifference = (e: React.FormEvent) => {
     e.preventDefault();
-    const systemTotal = stats?.dailyClose.reduce((sum, d) => sum + d.totalRevenue, 0) || 0;
+    const systemTotal = stats?.dailyClose.reduce((sum: number, d: any) => sum + d.totalRevenue, 0) || 0;
     const userTotal = parseFloat(cashAmount) + parseFloat(transferAmount) - parseFloat(expenses);
     setCashDifference(userTotal - systemTotal);
     setCashCloseSuccess(true);
@@ -331,6 +363,75 @@ export default function AdminDashboardPage() {
       }
     }
   }, [prodCategoryId, categories, hasType]);
+
+  // Dynamic Weekly Menu fetch for the selected week
+  useEffect(() => {
+    const fetchWeekMenu = async () => {
+      if (!tenant || !products.length) return;
+      const currentWeek = planningWeeks[selectedWeekIndex];
+      const res = await getWeeklyMenuByStartDate(tenant.id, currentWeek.startDateStr);
+      
+      const newMenu: Record<string, { productId: string; limit: number }> = {
+        Lunes: { productId: "", limit: 30 },
+        Martes: { productId: "", limit: 30 },
+        Miércoles: { productId: "", limit: 30 },
+        Jueves: { productId: "", limit: 30 },
+        Viernes: { productId: "", limit: 30 },
+        Sábado: { productId: "", limit: 30 },
+        Domingo: { productId: "", limit: 30 },
+      };
+
+      if (res.success && res.data && res.data.length > 0) {
+        res.data.forEach((dayItem: any) => {
+          if (newMenu[dayItem.dayName]) {
+            newMenu[dayItem.dayName] = {
+              productId: dayItem.productId || "",
+              limit: dayItem.limit || 30,
+            };
+          }
+        });
+      } else {
+        // Fallback to match by old default seed names
+        const oldDefaults: Record<string, string> = {
+          Lunes: "Wok de Pollo con Vegetales y Arroz Integral",
+          Martes: "Guiso Nutritivo de Lentejas Veggie",
+          Miércoles: "Salmón Grillado con Puré de Calabaza",
+          Jueves: "Wok de Pollo con Vegetales y Arroz Integral",
+          Viernes: "Guiso Nutritivo de Lentejas Veggie",
+          Sábado: "Salmón Grillado con Puré de Calabaza",
+          Domingo: "",
+        };
+
+        Object.entries(oldDefaults).forEach(([day, name]) => {
+          const match = products.find((p) => p.name === name);
+          if (match) {
+            newMenu[day] = { productId: match.id, limit: 30 };
+          }
+        });
+      }
+
+      setWeeklyMenuData(newMenu);
+    };
+
+    fetchWeekMenu();
+  }, [selectedWeekIndex, tenant, products]);
+
+  const handleSaveWeeklyMenu = async () => {
+    if (!tenant) return;
+    const currentWeek = planningWeeks[selectedWeekIndex];
+    const payload = Object.entries(weeklyMenuData).map(([dayName, info]) => ({
+      dayName,
+      productId: info.productId,
+      limit: info.limit,
+    }));
+
+    const res = await saveWeeklyMenu(tenant.id, currentWeek.startDateStr, payload);
+    if (res.success) {
+      alert("Menú semanal guardado correctamente.");
+    } else {
+      alert(res.error || "Error al guardar el menú.");
+    }
+  };
 
   if (loading) {
     return (
@@ -734,22 +835,49 @@ export default function AdminDashboardPage() {
           {activeTab === "menu" && (
             <div className="flex flex-col gap-6">
               <div>
-                <h2 className="text-xl font-bold text-white">Menú Semanal</h2>
+                <h2 className="text-xl font-bold text-white">Planificación de Menús Semanales</h2>
                 <p className="text-xs text-zinc-500 mt-0.5">Configura la vianda recomendada para cada día de la semana y su cupo máximo de producción.</p>
               </div>
 
+              {/* Selector de semanas premium */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Período de Planificación</span>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {planningWeeks.map((w, idx) => {
+                    const isSelected = selectedWeekIndex === idx;
+                    return (
+                      <button
+                        key={w.startDateStr}
+                        onClick={() => setSelectedWeekIndex(idx)}
+                        className={`p-3 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-500/10 border-amber-500 text-amber-550"
+                            : "bg-zinc-950 border-zinc-900 hover:border-zinc-800 text-zinc-400"
+                        }`}
+                      >
+                        <span className="text-xs font-black">{w.label}</span>
+                        <span className="text-[9px] opacity-70 font-semibold">{w.dateRange}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                {Object.entries(weeklyMenu).map(([day, meal]) => (
+                {Object.entries(weeklyMenuData).map(([day, info]) => (
                   <div key={day} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
                     <span className="text-sm font-black text-amber-500 w-24">{day}</span>
                     <select 
-                      value={meal}
-                      onChange={(e) => setWeeklyMenu({ ...weeklyMenu, [day]: e.target.value })}
-                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full"
+                      value={info.productId}
+                      onChange={(e) => setWeeklyMenuData({
+                        ...weeklyMenuData,
+                        [day]: { ...info, productId: e.target.value }
+                      })}
+                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full animate-fade-in"
                     >
                       <option value="">Ninguna vianda seleccionada</option>
                       {products.map((p) => (
-                        <option key={p.id} value={p.name}>
+                        <option key={p.id} value={p.id}>
                           {p.name}
                         </option>
                       ))}
@@ -758,13 +886,17 @@ export default function AdminDashboardPage() {
                       <span className="text-zinc-500 text-xs">Cupo:</span>
                       <input 
                         type="number"
-                        defaultValue="30"
+                        value={info.limit}
+                        onChange={(e) => setWeeklyMenuData({
+                          ...weeklyMenuData,
+                          [day]: { ...info, limit: parseInt(e.target.value) || 0 }
+                        })}
                         className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl w-16 text-center outline-none"
                       />
                     </div>
                   </div>
                 ))}
-                <PremiumButton variant="primary" size="sm" onClick={() => alert("Menú semanal actualizado.")} className="self-end mt-4">
+                <PremiumButton variant="primary" size="sm" onClick={handleSaveWeeklyMenu} className="self-end mt-4 animate-pulse-slow">
                   Guardar Configuración de Menú
                 </PremiumButton>
               </div>
@@ -895,7 +1027,7 @@ export default function AdminDashboardPage() {
                       {stats?.dailyClose.length === 0 ? (
                         <p className="text-zinc-500">Hoy no se han registrado ventas aún.</p>
                       ) : (
-                        stats?.dailyClose.map((c) => (
+                        stats?.dailyClose.map((c: any) => (
                           <div key={c.paymentMethod} className="flex justify-between border-b border-zinc-900 pb-2">
                             <span className="text-zinc-400 font-bold uppercase">{c.paymentMethod}</span>
                             <span className="text-white font-mono">${c.totalRevenue.toFixed(2)} ({c.count} ped.)</span>
@@ -904,7 +1036,7 @@ export default function AdminDashboardPage() {
                       )}
                       <div className="flex justify-between font-black text-amber-500 text-sm mt-2">
                         <span>Total Sistema:</span>
-                        <span>${stats?.dailyClose.reduce((sum, d) => sum + d.totalRevenue, 0).toFixed(2)}</span>
+                        <span>${stats?.dailyClose.reduce((sum: number, d: any) => sum + d.totalRevenue, 0).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

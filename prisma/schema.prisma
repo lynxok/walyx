@@ -18,6 +18,7 @@ model Tenant {
   products    Product[]
   customers   Customer[]
   orders      Order[]
+  weeklyMenus WeeklyMenu[]
 }
 
 model Category {
@@ -49,6 +50,7 @@ model Product {
   categoryId  String
   category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   orderItems  OrderItem[]
+  weeklyMenuDays WeeklyMenuDay[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -116,4 +118,30 @@ model OrderItem {
   customization String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model WeeklyMenu {
+  id        String          @id @default(uuid())
+  tenantId  String
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  days      WeeklyMenuDay[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([tenantId, startDate])
+}
+
+model WeeklyMenuDay {
+  id        String     @id @default(uuid())
+  menuId    String
+  menu      WeeklyMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dayName   String     // "Lunes", "Martes", etc.
+  productId String?
+  product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  limit     Int        @default(30)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([menuId, dayName])
 }
