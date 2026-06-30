@@ -10,7 +10,12 @@ import {
   MessageSquare, 
   ArrowRight,
   ShieldCheck,
-  Zap
+  Zap,
+  Check,
+  Users,
+  Percent,
+  Calendar,
+  Gift
 } from "lucide-react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 
@@ -21,7 +26,7 @@ const SEED_SHOPS = [
     type: "ROPA",
     description: "Tienda premium de ropa de diseño independiente y accesorios.",
     image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500",
-    color: "from-amber-500 to-yellow-600",
+    color: "from-purple-500 to-indigo-600",
   },
   {
     name: "NutriViandas Cocina",
@@ -45,11 +50,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden">
       {/* Background Decorative Glow Orbs */}
-      <div className="absolute top-10 left-1/4 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-20 right-1/4 w-[500px] h-[500px] bg-emerald-600/5 rounded-full blur-[180px] pointer-events-none" />
+      <div className="absolute top-10 left-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[150px] pointer-events-none animate-orb-1" />
+      <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[180px] pointer-events-none animate-orb-2" />
+      <div className="absolute bottom-1/4 left-10 w-[450px] h-[450px] bg-orange-500/5 rounded-full blur-[160px] pointer-events-none animate-orb-1" />
 
       {/* Navbar */}
-      <header className="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur sticky top-0 z-55 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
+      <header className="border-b border-white/5 bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
         <Link href="/" className="flex items-center gap-2 font-black text-2xl tracking-tight text-white">
           LYNX <span className="text-amber-500 font-medium">Cocina & Ventas</span>
         </Link>
@@ -62,62 +68,271 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 flex flex-col gap-16 relative z-10">
-        <section className="text-center flex flex-col items-center gap-6 max-w-3xl mx-auto mt-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-500 font-semibold uppercase tracking-wider animate-pulse">
-            <Sparkles className="w-3.5 h-3.5" /> El Futuro de tu Comercio Online
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 flex flex-col gap-24 relative z-10">
+        
+        {/* Hero Section */}
+        <section className="text-center flex flex-col items-center gap-6 max-w-4xl mx-auto mt-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-amber-400 font-semibold uppercase tracking-wider animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Creación de Catálogos & Gestión Inteligente
           </div>
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight">
-            La plataforma multi-rubro para vender por <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">WhatsApp</span>
+          <h1 className="text-4xl sm:text-7xl font-black tracking-tight text-white leading-none">
+            Vende en automático y cobra directo por <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500">WhatsApp</span>
           </h1>
-          <p className="text-zinc-400 text-lg sm:text-xl">
-            Optimiza tu catálogo de Ropa con talles, tus Viandas saludables con menú semanal o tu Pastelería de diseño. Gestión interna premium con estadísticas reales.
+          <p className="text-zinc-400 text-lg sm:text-xl max-w-2xl mt-2 leading-relaxed">
+            La plataforma definitiva y adaptada a tu rubro. Gestiona variantes de talles en Ropa, menús de calorías en Viandas o porciones en Pastelería con un panel administrativo de nivel profesional.
           </p>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
+          <div className="flex flex-wrap justify-center gap-4 mt-6">
             <Link href="/onboarding">
               <PremiumButton variant="primary" size="lg" glow className="px-8 py-6 text-lg font-bold">
-                Empezar Onboarding <ArrowRight className="w-5 h-5 ml-2" />
+                Crear Mi Tienda Ahora <ArrowRight className="w-5 h-5 ml-2" />
               </PremiumButton>
             </Link>
           </div>
         </section>
 
         {/* Features Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-4">
-          <div className="glass-panel p-8 rounded-2xl border border-zinc-900 bg-zinc-900/10 hover:border-zinc-800 transition-all flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
               <Zap className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-white">Nicho Adaptado</h3>
+            <h3 className="text-xl font-bold text-white">Nicho 100% Adaptado</h3>
             <p className="text-zinc-400 text-sm leading-relaxed">
               Manejo de propiedades específicas para cada industria: talles y variantes de ropa, calorías e ingredientes para viandas fit, o porciones para pastelerías.
             </p>
           </div>
-          <div className="glass-panel p-8 rounded-2xl border border-zinc-900 bg-zinc-900/10 hover:border-zinc-800 transition-all flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
               <MessageSquare className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-white">Pedido a WhatsApp</h3>
+            <h3 className="text-xl font-bold text-white">Pedido Directo a WhatsApp</h3>
             <p className="text-zinc-400 text-sm leading-relaxed">
-              El cliente llena su carrito en la web pública del comercio y, al confirmar, el sistema genera la orden internamente y redirige con el pedido redactado.
+              El cliente navega tu catálogo, arma el carrito y, al confirmar, el sistema genera la orden y redirige a WhatsApp con el pedido perfectamente estructurado.
             </p>
           </div>
-          <div className="glass-panel p-8 rounded-2xl border border-zinc-900 bg-zinc-900/10 hover:border-zinc-800 transition-all flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center text-pink-500">
+          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
               <TrendingUp className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold text-white">Cierre de Caja y ABC</h3>
             <p className="text-zinc-400 text-sm leading-relaxed">
-              Métricas avanzadas para el comerciante: panel de ventas, arqueo de caja diario por método de pago y análisis de curva ABC para tus productos estrella.
+              Métricas comerciales avanzadas: panel de ventas, arqueo de caja diario consolidado por método de pago y análisis de curva ABC para tus productos estrella.
             </p>
           </div>
         </section>
 
+        {/* Unique Features Explanation (Vaca Club & Abandoned Carts) */}
+        <section className="flex flex-col gap-12">
+          <div className="text-center max-w-2xl mx-auto">
+            <span className="text-xs font-bold text-amber-500 tracking-widest uppercase">Características Únicas</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">Herramientas que multiplican tus ventas</h2>
+            <p className="text-zinc-400 mt-3 text-sm">
+              Diseñamos integraciones exclusivas para resolver los problemas reales de los negocios de viandas, indumentaria y gastronomía.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Vaca Club Card */}
+            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-[60px]" />
+              <div className="flex flex-col gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                  <Users className="w-7 h-7" />
+                </div>
+                <div className="inline-block self-start px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-xs font-semibold">
+                  Función Exclusiva LYNX
+                </div>
+                <h3 className="text-2xl font-black text-white">Vaca Club (Compra Grupal)</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Permite a tus clientes coordinar pedidos conjuntos. Ideal para oficinas, familias o grupos de amigos que compran viandas semanales. Uno inicia la compra, comparte un enlace único y todos agregan sus productos favoritos. Al final, se consolida en un solo pedido para optimizar la logística de envío.
+                </p>
+              </div>
+              <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between text-xs text-purple-400 font-bold group-hover:translate-x-1 transition-transform">
+                <span>Reduce costos de envío hasta un 40%</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+
+            {/* Abandoned Cart Recovery Card */}
+            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-[60px]" />
+              <div className="flex flex-col gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-400">
+                  <Percent className="w-7 h-7" />
+                </div>
+                <div className="inline-block self-start px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-xs font-semibold">
+                  Automatización de Recuperación
+                </div>
+                <h3 className="text-2xl font-black text-white">Recuperador de Carritos Abandonados</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  No pierdas más ventas. Cuando un cliente arma un carrito pero no completa la confirmación de WhatsApp, el sistema detecta la inactividad y te permite enviarle un recordatorio personalizado con un solo clic. Ofrece cupones de descuento rápidos y aumenta la tasa de conversión hasta un 25%.
+                </p>
+              </div>
+              <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between text-xs text-orange-400 font-bold group-hover:translate-x-1 transition-transform">
+                <span>Recupera el 25% de las ventas perdidas</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Subscription Plans */}
+        <section className="flex flex-col gap-12 relative">
+          <div className="absolute -top-20 left-1/3 w-[300px] h-[300px] bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
+          
+          <div className="text-center max-w-2xl mx-auto">
+            <span className="text-xs font-bold text-amber-500 tracking-widest uppercase">Precios Transparentes</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">Planes de Suscripción Flexibles</h2>
+            <p className="text-zinc-400 mt-3 text-sm">
+              Escoge el plan perfecto para escalar tu negocio. Sin costos ocultos, cancela cuando quieras.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+            {/* Plan Basico */}
+            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-white/5 hover:border-white/10 transition-all">
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h4 className="text-lg font-bold text-zinc-300">Básico</h4>
+                  <div className="mt-4 flex items-baseline gap-1 text-white">
+                    <span className="text-3xl font-black">$9</span>
+                    <span className="text-zinc-400 text-sm">USD/mes</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">~ $11.000 ARS/mes</p>
+                </div>
+                <div className="border-t border-white/5 pt-6">
+                  <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-4">Qué incluye:</p>
+                  <ul className="flex flex-col gap-3 text-sm text-zinc-400">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Hasta 150 pedidos mensuales</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Hasta 50 productos activos</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Catálogo web auto-gestionable</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Redirección a WhatsApp</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-8">
+                <Link href="/onboarding" className="w-full block">
+                  <button className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                    Comenzar Básico
+                  </button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Plan Pro (Recomendado) */}
+            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border-2 border-amber-500 relative shadow-[0_0_40px_rgba(245,158,11,0.15)]">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 bg-amber-500 text-zinc-950 text-xs font-black uppercase tracking-wider rounded-full">
+                Más popular
+              </div>
+              <div className="flex flex-col gap-6">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-bold text-amber-400">Pro</h4>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 text-2xs font-extrabold uppercase">Recomendado</span>
+                  </div>
+                  <div className="mt-4 flex items-baseline gap-1 text-white">
+                    <span className="text-4xl font-black">$19</span>
+                    <span className="text-zinc-400 text-sm">USD/mes</span>
+                  </div>
+                  <p className="text-xs text-amber-500/80 mt-1">~ $23.000 ARS/mes</p>
+                </div>
+                <div className="border-t border-white/5 pt-6">
+                  <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-4">Qué incluye:</p>
+                  <ul className="flex flex-col gap-3 text-sm text-zinc-300">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span><strong>Pedidos ilimitados</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span><strong>Productos ilimitados</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span>Acceso total a <strong>Vaca Club</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span>Recuperador de Carritos</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span>Planificador semanal de menús</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-8">
+                <Link href="/onboarding" className="w-full block">
+                  <PremiumButton variant="primary" size="md" glow className="w-full font-bold text-xs uppercase tracking-wider">
+                    Comenzar Pro
+                  </PremiumButton>
+                </Link>
+              </div>
+            </div>
+
+            {/* Plan Premium */}
+            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-white/5 hover:border-white/10 transition-all">
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h4 className="text-lg font-bold text-zinc-300">Premium</h4>
+                  <div className="mt-4 flex items-baseline gap-1 text-white">
+                    <span className="text-3xl font-black">$35</span>
+                    <span className="text-zinc-400 text-sm">USD/mes</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">~ $42.000 ARS/mes</p>
+                </div>
+                <div className="border-t border-white/5 pt-6">
+                  <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-4">Qué incluye:</p>
+                  <ul className="flex flex-col gap-3 text-sm text-zinc-400">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Todo lo del Plan Pro</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Soporte multi-agente</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Ejecutivo de cuentas dedicado</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span>Integración prioritaria</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-8">
+                <Link href="/onboarding" className="w-full block">
+                  <button className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                    Comenzar Premium
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Demo Stores Selection */}
-        <section className="flex flex-col gap-8 mt-8">
+        <section className="flex flex-col gap-8">
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-white">Tiendas de Demostración Semilla</h2>
+            <span className="text-xs font-bold text-amber-500 tracking-widest uppercase">Prueba el Sistema</span>
+            <h2 className="text-3xl font-extrabold text-white mt-2">Tiendas de Demostración Semilla</h2>
             <p className="text-zinc-400 mt-2 text-sm max-w-lg mx-auto">
               Haz clic para visitar la tienda pública (vistas de cliente) o ingresar al panel administrativo y ver la gestión interna de cada una.
             </p>
@@ -127,7 +342,7 @@ export default function Home() {
             {SEED_SHOPS.map((shop) => (
               <div 
                 key={shop.slug} 
-                className="group relative rounded-2xl border border-zinc-900 bg-zinc-900/20 overflow-hidden hover:border-zinc-800 transition-all flex flex-col justify-between"
+                className="group relative rounded-2xl overflow-hidden transition-all flex flex-col justify-between glass-card glass-card-hover"
               >
                 <div className="h-48 relative overflow-hidden">
                   <img 
@@ -135,8 +350,8 @@ export default function Home() {
                     alt={shop.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
-                  <div className="absolute top-4 right-4 bg-zinc-900/90 backdrop-blur border border-zinc-800 text-zinc-100 text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 to-transparent" />
+                  <div className="absolute top-4 right-4 bg-zinc-900/90 backdrop-blur border border-white/10 text-white text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
                     {shop.type}
                   </div>
                 </div>
@@ -146,14 +361,14 @@ export default function Home() {
                   <p className="text-zinc-400 text-xs leading-relaxed">{shop.description}</p>
                 </div>
 
-                <div className="p-6 pt-0 border-t border-zinc-900/80 flex gap-4">
+                <div className="p-6 pt-0 border-t border-white/5 flex gap-4 mt-4">
                   <Link href={`/shop/${shop.slug}`} className="flex-1">
-                    <button className="w-full bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800 px-4 py-2.5 rounded-xl font-semibold text-xs tracking-wide transition-all uppercase">
+                    <button className="w-full bg-white/5 text-zinc-100 hover:bg-white/10 border border-white/10 px-4 py-2.5 rounded-xl font-semibold text-xs tracking-wide transition-all uppercase cursor-pointer">
                       Tienda Pública
                     </button>
                   </Link>
                   <Link href={`/admin/${shop.slug}`} className="flex-1">
-                    <button className="w-full bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all uppercase">
+                    <button className="w-full bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all uppercase cursor-pointer">
                       Panel Admin
                     </button>
                   </Link>
@@ -165,7 +380,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-900 bg-zinc-950 py-8 px-6 text-center text-xs text-zinc-600 mt-auto">
+      <footer className="border-t border-white/5 bg-zinc-950/80 py-8 px-6 text-center text-xs text-zinc-600 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 LYNX Cocina & Ventas. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-zinc-500 font-medium">
@@ -176,3 +391,4 @@ export default function Home() {
     </div>
   );
 }
+

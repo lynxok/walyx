@@ -139,3 +139,43 @@ body {
   animation: pulse-glow 3s infinite ease-in-out;
 }
 
+/* Glassmorphism Premium styles */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-hover {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 30px -5px rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* Orb movement animations */
+@keyframes orb-float-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes orb-float-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-40px, 40px) scale(1.15); }
+}
+
+.animate-orb-1 {
+  animation: orb-float-1 12s infinite ease-in-out;
+}
+
+.animate-orb-2 {
+  animation: orb-float-2 16s infinite ease-in-out;
+}
+
+
