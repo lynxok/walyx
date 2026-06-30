@@ -25,9 +25,10 @@ export interface ProductData {
 interface ProductCardProps {
   product: ProductData;
   onAddToCart: (product: ProductData, options: any) => void;
+  onGroupGift?: (product: ProductData) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onGroupGift }) => {
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || "");
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || "");
   const [selectedPortions, setSelectedPortions] = useState(product.portions?.[0] || 1);
@@ -177,21 +178,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           {product.type === "bakery" && renderBakerySelector()}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-zinc-900 flex gap-2">
-          {product.type === "vianda" && (
-            <PremiumButton variant="outline" size="sm" className="flex-1 text-[11px]" onClick={() => alert("Personalización nutricional!")}>
-              Personalizar
+        <div className="mt-5 pt-4 border-t border-zinc-900 flex flex-col gap-2">
+          <div className="flex gap-2">
+            {product.type === "vianda" && (
+              <PremiumButton variant="outline" size="sm" className="flex-1 text-[11px]" onClick={() => alert("Personalización nutricional!")}>
+                Personalizar
+              </PremiumButton>
+            )}
+            <PremiumButton
+              variant="primary"
+              size="sm"
+              className="flex-1 font-bold text-[11px]"
+              onClick={handleAdd}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Añadir
+            </PremiumButton>
+          </div>
+          {onGroupGift && (
+            <PremiumButton
+              variant="outline"
+              size="sm"
+              className="w-full font-bold text-[10px] text-amber-500 border-amber-500/30 hover:border-amber-500 hover:bg-amber-500/10"
+              onClick={() => onGroupGift(product)}
+            >
+              🎁 Regalar en Grupo (Vaca Club)
             </PremiumButton>
           )}
-          <PremiumButton
-            variant="primary"
-            size="sm"
-            className="flex-1 font-bold text-[11px]"
-            onClick={handleAdd}
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            Añadir
-          </PremiumButton>
         </div>
       </div>
     </div>

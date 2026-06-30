@@ -27,6 +27,8 @@ import { getHolidayForDate } from "@/lib/holidays";
 import { getCurrentGlobalUser, logoutGlobalUser } from "@/app/actions/auth";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
+import { createGroupGift } from "@/app/actions/groupGift";
+import { saveCartSession, getAbandonedCarts } from "@/app/actions/cartRecovery";
 
 // Mock delivery zones matching dynamic styles
 const DEFAULT_ZONES = [
@@ -70,6 +72,13 @@ export default function ShopPublicPage() {
   // Cart State (for Ropa/Pastelería)
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Group Gift (Vaca Club) Modal State
+  const [vacaProduct, setVacaProduct] = useState<ProductData | null>(null);
+  const [vacaCreatorName, setVacaCreatorName] = useState("");
+  const [vacaCreatorPhone, setVacaCreatorPhone] = useState("");
+  const [vacaMessage, setVacaMessage] = useState("");
+  const [vacaLoading, setVacaLoading] = useState(false);
 
   // Dynamic Weekly Planner States (for Viandas)
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
@@ -205,6 +214,69 @@ export default function ShopPublicPage() {
   useEffect(() => {
     fetchData();
   }, [tenantSlug]);
+
+  // Sync Cart to db session
+  useEffect(() => {
+    if (!tenant) return;
+    const syncCart = async () => {
+      // Don't save empty cart on initial render before data fetches, check if cart has been interacted or not
+      // We can serialize and save it.
+      const itemsJson = JSON.stringify(cart);
+      await saveCartSession(tenant.id, globalUser ? globalUser.id : null, itemsJson);
+    };
+    syncCart();
+  }, [cart, tenant, globalUser]);
+
+  const handleCreateVaca = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vacaProduct || !tenant) return;
+    setVacaLoading(true);
+    const res = await createGroupGift(
+      tenant.id,
+      vacaProduct.id,
+      vacaCreatorName,
+      vacaCreatorPhone,
+      vacaMessage
+    );
+    setVacaLoading(false);
+    if (res.success && res.giftId) {
+      alert("¡Colecta Creada! Compartí el link con tus amigos.");
+      router.push(`/shop/${tenantSlug}/vaca/${res.giftId}`);
+    } else {
+      alert(res.error || "No se pudo crear la colecta.");
+    }
+  };
+
+  useEffect(() => {
+    const checkRecoveredCart = async () => {
+      if (typeof window === "undefined" || !products.length || !tenant) return;
+      const urlParams = new URLSearchParams(window.location.search);
+      const recoveredCartId = urlParams.get("recoveredCart");
+      if (recoveredCartId) {
+        try {
+          // Fetch the cart session details by querying from neon/sqlite, but since we are on the client,
+          // let's fetch abandoned carts for this tenant and find it or call a server action.
+          // Since we want to find the specific cart, we can call getAbandonedCarts and filter by ID or similar.
+          const res = await getAbandonedCarts(tenant.id);
+          if (res.success && res.data) {
+            const match = res.data.find((c: any) => c.id === recoveredCartId);
+            if (match) {
+              const loadedItems = JSON.parse(match.items);
+              if (Array.isArray(loadedItems)) {
+                setCart(loadedItems);
+                setIsCartOpen(true);
+                // Clean URL query param
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error recovering cart:", e);
+        }
+      }
+    };
+    checkRecoveredCart();
+  }, [products, tenant]);
 
   useEffect(() => {
     const loadWeeklyMenuPlan = async () => {
@@ -832,6 +904,11 @@ export default function ShopPublicPage() {
                       <ProductCard 
                         product={p} 
                         onAddToCart={handleAddToCart}
+                        onGroupGift={(prod) => {
+                          setVacaProduct(prod);
+                          setVacaCreatorName(globalUser?.name || "");
+                          setVacaCreatorPhone(globalUser?.phone || "");
+                        }}
                       />
                     </div>
                   ))
@@ -1004,7 +1081,86 @@ export default function ShopPublicPage() {
           </div>
         </>
       )}
+      {/* VACA CLUB MODAL */}
+      {vacaProduct && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-900 w-full max-w-md rounded-3xl p-6 flex flex-col gap-4 relative">
+            <button 
+              onClick={() => setVacaProduct(null)} 
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
+            <div>
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                🎁 Regalar en Grupo (Vaca Club)
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                Creá una colecta para comprarle <strong>{vacaProduct.name}</strong> en grupo a un amigo/a.
+              </p>
+            </div>
+
+            <div className="flex gap-3 items-center p-3 bg-zinc-900/30 border border-zinc-900 rounded-2xl">
+              <img 
+                src={vacaProduct.image} 
+                alt={vacaProduct.name} 
+                className="w-12 h-12 rounded-xl object-cover" 
+              />
+              <div>
+                <h4 className="text-xs font-bold text-zinc-100">{vacaProduct.name}</h4>
+                <p className="text-xs font-extrabold text-amber-500 mt-0.5">${vacaProduct.price}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateVaca} className="flex flex-col gap-3 text-xs">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-zinc-550 font-bold uppercase">Tu Nombre (Creador/Organizador)</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={vacaCreatorName} 
+                  onChange={(e) => setVacaCreatorName(e.target.value)} 
+                  placeholder="Ej. Martín" 
+                  className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none" 
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-zinc-550 font-bold uppercase">Tu WhatsApp (para coordinar envío)</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={vacaCreatorPhone} 
+                  onChange={(e) => setVacaCreatorPhone(e.target.value)} 
+                  placeholder="Ej. +5491122334455" 
+                  className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none" 
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-zinc-550 font-bold uppercase">Dedicatoria / Mensaje (opcional)</label>
+                <textarea 
+                  value={vacaMessage} 
+                  onChange={(e) => setVacaMessage(e.target.value)} 
+                  placeholder="¡Espero que te guste mucho este regalo!" 
+                  className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none resize-none h-16" 
+                />
+              </div>
+
+              <PremiumButton 
+                type="submit" 
+                variant="primary" 
+                size="lg" 
+                disabled={vacaLoading} 
+                className="w-full justify-center mt-2"
+              >
+                {vacaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Crear Colecta y Obtener Link"}
+              </PremiumButton>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

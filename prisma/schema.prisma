@@ -34,6 +34,8 @@ model Tenant {
   sizeCharts      SizeChart[]
   clothingBrands  ClothingBrand[]
   clothingTypes   ClothingType[]
+  groupGifts      GroupGift[]
+  cartSessions    CartSession[]
 }
 
 model Category {
@@ -83,6 +85,7 @@ model Product {
   // Pastries / Pasteleria attributes
   sweetnessLevel String?  // e.g., "Bajo", "Medio", "Alto"
   portions       Int?     // Number of portions/slices
+  groupGifts     GroupGift[]
 }
 
 model GlobalUser {
@@ -96,6 +99,7 @@ model GlobalUser {
   emailVerified Boolean   @default(false)
   isSuperAdmin  Boolean   @default(false)
   customers    Customer[]
+  cartSessions  CartSession[]
 }
 
 model VerificationToken {
@@ -235,4 +239,45 @@ model SizeChartRow {
   values      String    // JSON: ["S","88-92","68"]
   order       Int       @default(0)
   createdAt   DateTime  @default(now())
+}
+
+// ─── Funcionalidades de Conversión y Colectas ─────────────────────────────────
+
+model GroupGift {
+  id              String             @id @default(uuid())
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  targetAmount    Float
+  raisedAmount    Float              @default(0)
+  status          String             @default("PENDING") // PENDING, COMPLETED
+  creatorName     String
+  creatorPhone    String
+  message         String?
+  contributions   GiftContribution[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model GiftContribution {
+  id              String    @id @default(uuid())
+  giftId          String
+  gift            GroupGift @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  contributorName String
+  amount          Float
+  paymentStatus   String    @default("SUCCESS") // PENDING, SUCCESS
+  createdAt       DateTime  @default(now())
+}
+
+model CartSession {
+  id           String      @id @default(uuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  globalUserId String?
+  globalUser   GlobalUser? @relation(fields: [globalUserId], references: [id], onDelete: SetNull)
+  items        String      // JSON String del carrito
+  status       String      @default("ACTIVE") // ACTIVE, ABANDONED, RECOVERED, CONVERTED
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }

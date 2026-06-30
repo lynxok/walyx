@@ -34,7 +34,8 @@ import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettings";
-import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone } from "lucide-react";
+import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy } from "lucide-react";
+import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 
 export default function AdminDashboardPage() {
   const params = useParams();
@@ -128,6 +129,9 @@ export default function AdminDashboardPage() {
   const [cashDifference, setCashDifference] = useState<number | null>(null);
   const [cashCloseSuccess, setCashCloseSuccess] = useState(false);
 
+  // Cart Recovery State
+  const [abandonedCarts, setAbandonedCarts] = useState<any[]>([]);
+
   // Dynamic Weekly Menu states (for Viandas)
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
   const [weeklyMenuData, setWeeklyMenuData] = useState<Record<string, { productId: string; limit: number; isClosed: boolean; holidayName: string | null }>>({
@@ -210,6 +214,11 @@ export default function AdminDashboardPage() {
     const statsRes = await getDashboardStats(tenantRes.data.id);
     if (statsRes.success && statsRes.data) {
       setStats(statsRes.data);
+    }
+
+    const cartsRes = await getAbandonedCarts(tenantRes.data.id);
+    if (cartsRes.success && cartsRes.data) {
+      setAbandonedCarts(cartsRes.data);
     }
 
     const [chartsData, brandsData, typesData] = await Promise.all([
@@ -573,6 +582,7 @@ export default function AdminDashboardPage() {
             ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
             ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
             { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
+            { id: "recovery", label: "Recuperar Ventas", icon: <LifeBuoy className="w-4 h-4" /> },
             { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
             { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> }
           ].map((item) => (
@@ -2075,6 +2085,119 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* TAB: RECOVERY */}
+          {activeTab === "recovery" && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h2 className="text-xl font-bold text-white">Recuperar Ventas Abandonadas</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Visualizá carritos que no terminaron su pedido y contactalos con un recordatorio directo a WhatsApp.
+                </p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-zinc-900 text-zinc-400">
+                        <th className="py-3 font-bold uppercase tracking-wider">Usuario / Sesión</th>
+                        <th className="py-3 font-bold uppercase tracking-wider">Productos en Carrito</th>
+                        <th className="py-3 font-bold uppercase tracking-wider text-right">Total Estimado</th>
+                        <th className="py-3 font-bold uppercase tracking-wider text-center">Inactividad</th>
+                        <th className="py-3 font-bold uppercase tracking-wider text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {abandonedCarts.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-zinc-500 italic">
+                            No se encontraron carritos inactivos o abandonados en este momento.
+                          </td>
+                        </tr>
+                      ) : (
+                        abandonedCarts.map((cart: any) => {
+                          let itemsList: any[] = [];
+                          try {
+                            itemsList = JSON.parse(cart.items);
+                          } catch {}
+
+                          const totalEstimado = itemsList.reduce(
+                            (sum, item) => sum + (item.product?.price || 0) * (item.quantity || 0),
+                            0
+                          );
+
+                          const minutesInactive = Math.round(
+                            (Date.now() - new Date(cart.updatedAt).getTime()) / 60000
+                          );
+
+                          const handleRecoverWhatsApp = async () => {
+                            // Update status to RECOVERED in db
+                            await markCartAsRecovered(cart.id);
+
+                            // Build wa message
+                            const name = cart.globalUser?.name || "Cliente";
+                            const recoveryLink = `${window.location.origin}/shop/${tenantSlug}?recoveredCart=${cart.id}`;
+                            const text = `¡Hola ${name}! 🛒\n\nVimos que dejaste algunos productos en tu carrito. Podés retomar tu compra y finalizar tu pedido haciendo clic en el siguiente enlace:\n\n${recoveryLink}\n\n¡Cualquier duda avisanos!`;
+                            const phone = cart.globalUser?.phone || "";
+                            const cleanPhone = phone.replace(/[^0-9]/g, "");
+
+                            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
+                            
+                            // Reload list
+                            fetchData();
+                          };
+
+                          return (
+                            <tr key={cart.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/20">
+                              <td className="py-3.5">
+                                <div className="font-bold text-zinc-150">
+                                  {cart.globalUser?.name || "Invitado sin registrar"}
+                                </div>
+                                <div className="text-[10px] text-zinc-500 mt-0.5">
+                                  {cart.globalUser?.email || "Sin email"}
+                                </div>
+                                <div className="text-[10px] text-zinc-550">
+                                  {cart.globalUser?.phone || "Sin teléfono"}
+                                </div>
+                              </td>
+                              <td className="py-3.5">
+                                <div className="flex flex-col gap-1">
+                                  {itemsList.map((item: any, idx: number) => (
+                                    <div key={idx} className="text-zinc-300 text-[11px]">
+                                      {item.quantity}x {item.product?.name || "Producto desconocido"}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="py-3.5 text-right font-bold text-amber-500">
+                                ${totalEstimado}
+                              </td>
+                              <td className="py-3.5 text-center text-zinc-400">
+                                {minutesInactive >= 60
+                                  ? `${Math.round(minutesInactive / 60)} hs`
+                                  : `${minutesInactive} min`}
+                              </td>
+                              <td className="py-3.5 text-center">
+                                <PremiumButton
+                                  variant="primary"
+                                  size="sm"
+                                  className="text-[10px] font-bold py-1.5 px-3"
+                                  onClick={handleRecoverWhatsApp}
+                                >
+                                  Recuperar por WhatsApp
+                                </PremiumButton>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
