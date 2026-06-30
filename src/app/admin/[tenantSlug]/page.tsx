@@ -508,7 +508,8 @@ export default function AdminDashboardPage() {
             { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
             { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
             ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
-            { id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> },
+            ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
+            ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
             { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
             { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> }
           ].map((item) => (
@@ -967,8 +968,8 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* TAB 5: INSUMOS & RECIPES */}
-          {activeTab === "insumos" && (
+          {/* TAB 5: INSUMOS & RECIPES - only for VIANDA and PASTELERIA */}
+          {activeTab === "insumos" && hasType !== "ROPA" && (
             <div className="flex flex-col gap-6">
               <div>
                 <h2 className="text-xl font-bold text-white">Insumos y Recetas</h2>
@@ -1039,8 +1040,105 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* TAB: TABLAS DE TALLES - only for ROPA */}
+          {activeTab === "talles" && hasType === "ROPA" && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h2 className="text-xl font-bold text-white">Tablas de Talles</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Definí las medidas para cada categoría de ropa. Tus clientes podrán consultarlas en la tienda pública antes de comprar.</p>
+              </div>
+
+              {/* Tabla de Remeras */}
+              {[
+                { cat: "Remeras / Buzos", cols: ["Talle", "Pecho (cm)", "Manga (cm)", "Largo (cm)"], rows: [["S", "88-92", "59", "68"], ["M", "93-97", "61", "70"], ["L", "98-103", "63", "72"], ["XL", "104-110", "65", "74"], ["XXL", "111-118", "67", "76"]] },
+                { cat: "Pantalones / Jeans", cols: ["Talle", "Cintura (cm)", "Cadera (cm)", "Largo (cm)"], rows: [["36", "76-80", "92-96", "100"], ["38", "81-85", "97-101", "101"], ["40", "86-90", "102-106", "102"], ["42", "91-95", "107-111", "103"], ["44", "96-100", "112-116", "104"]] },
+                { cat: "Calzado", cols: ["Talle ARG", "Talle EUR", "Largo Pie (cm)"], rows: [["36", "36", "23.0"], ["37", "37", "23.7"], ["38", "38", "24.3"], ["39", "39", "25.0"], ["40", "40", "25.7"], ["41", "41", "26.3"], ["42", "42", "27.0"], ["43", "43", "27.7"]] },
+              ].map((table) => (
+                <div key={table.cat} className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">{table.cat}</h3>
+                    <span className="text-[9px] px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full font-semibold uppercase">Editable</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-zinc-800">
+                          {table.cols.map((col) => (
+                            <th key={col} className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 pr-4 text-[10px]">{col}</th>
+                          ))}
+                          <th className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 text-[10px]">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {table.rows.map((row, ri) => (
+                          <tr key={ri} className="border-b border-zinc-900/50 hover:bg-zinc-900/20 transition-colors">
+                            {row.map((cell, ci) => (
+                              <td key={ci} className="py-2 pr-4">
+                                <input
+                                  type="text"
+                                  defaultValue={cell}
+                                  className="bg-transparent border-b border-zinc-800 focus:border-amber-500 text-white text-xs py-1 outline-none w-full transition-colors"
+                                />
+                              </td>
+                            ))}
+                            <td className="py-2">
+                              <button className="text-red-500/60 hover:text-red-400 text-[10px] font-semibold transition-colors">Eliminar</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <PremiumButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => alert(`Fila agregada a ${table.cat}`)}
+                    >
+                      + Agregar Fila
+                    </PremiumButton>
+                    <PremiumButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => alert(`Tabla de "${table.cat}" guardada.`)}
+                    >
+                      Guardar Tabla
+                    </PremiumButton>
+                  </div>
+                </div>
+              ))}
+
+              {/* Equivalencias Internacionales */}
+              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                <h3 className="text-sm font-bold text-amber-500 uppercase tracking-wider">Equivalencias Internacionales</h3>
+                <p className="text-xs text-zinc-500">Referencia rápida de conversión de talles entre regiones.</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800">
+                        {["Argentina / Latam", "USA", "Europa", "UK"].map((h) => (
+                          <th key={h} className="text-left text-zinc-400 font-bold uppercase tracking-wider py-2 pr-4 text-[10px]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[["XS", "XS", "XS", "6-8"], ["S", "S", "S", "8-10"], ["M", "M", "M", "10-12"], ["L", "L", "L", "12-14"], ["XL", "XL", "XL", "14-16"], ["XXL", "XXL", "XXL", "18-20"]].map((row, i) => (
+                        <tr key={i} className="border-b border-zinc-900/50 hover:bg-zinc-900/20 transition-colors">
+                          {row.map((cell, j) => (
+                            <td key={j} className="py-2.5 pr-4 text-zinc-300 font-mono">{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 6: CASH REGISTER CLOSE */}
           {activeTab === "cash" && (
+
             <div className="flex flex-col gap-6">
               <div>
                 <h2 className="text-xl font-bold text-white">Arqueo y Cierre de Caja Diario</h2>
