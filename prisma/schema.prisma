@@ -1,0 +1,112 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  categories  Category[]
+  products    Product[]
+  customers   Customer[]
+  orders      Order[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  slug        String
+  type        String    // "ROPA", "VIANDA", "PASTELERIA"
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([slug, tenantId])
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  stock       Int         @default(0)
+  imageUrl    String?
+  isActive    Boolean     @default(true)
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Clothing attributes
+  size        String?
+  color       String?
+  material    String?
+
+  // Food / Viandas attributes
+  calories     Float?
+  ingredients  String?    // comma-separated or text
+  isVegan      Boolean    @default(false)
+  isGlutenFree Boolean    @default(false)
+
+  // Pastries / Pasteleria attributes
+  sweetnessLevel String?  // e.g., "Bajo", "Medio", "Alto"
+  portions       Int?     // Number of portions/slices
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  address   String?
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, tenantId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status          String      @default("PENDING") // PENDING, PREPARING, DELIVERED, CANCELLED
+  total           Float
+  paymentMethod   String      @default("CASH") // CASH, TRANSFER, CARD
+  paymentStatus   String      @default("PENDING") // PENDING, PAID, REFUNDED
+  deliveryAddress String?
+  deliveryNotes   String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
