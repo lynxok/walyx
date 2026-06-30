@@ -17,6 +17,15 @@ model Tenant {
   logoUrl         String?
   bannerUrl       String?
   themeSettings   String           @default("{\"primaryColor\":\"#f59e0b\",\"backgroundColor\":\"#09090b\",\"layoutMode\":\"grid\",\"textColor\":\"#ffffff\",\"fontFamily\":\"Outfit\",\"cardStyle\":\"glass\"}")
+  
+  // Suscripciones y límites de facturación
+  planType        String           @default("BASIC") // BASIC, PRO, PREMIUM
+  status          String           @default("TRIAL") // TRIAL, ACTIVE, SUSPENDED, CANCELED
+  trialEndsAt     DateTime?
+  subscriptionEndsAt DateTime?
+  maxProductsAllowed Int           @default(20)
+  maxOrdersAllowedPerMonth Int     @default(30) // Límite de pedidos para controlar cobro en Viandas
+  
   categories      Category[]
   products        Product[]
   customers       Customer[]
@@ -84,7 +93,19 @@ model GlobalUser {
   phone        String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  emailVerified Boolean   @default(false)
+  isSuperAdmin  Boolean   @default(false)
   customers    Customer[]
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  email     String
+  code      String   // Código OTP de 6 dígitos
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, code])
 }
 
 model Customer {

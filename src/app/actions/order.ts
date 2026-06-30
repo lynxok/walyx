@@ -41,6 +41,30 @@ export async function createOrder(input: CreateOrderInput) {
       throw new Error("El inquilino no existe.");
     }
 
+    if (tenant.status === "SUSPENDED") {
+      throw new Error("El comercio se encuentra actualmente suspendido por falta de pago o mantenimiento.");
+    }
+
+    // Validate monthly orders limit
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthlyOrdersCount = await db.order.count({
+      where: {
+        tenantId: input.tenantId,
+        createdAt: {
+          gte: startOfMonth,
+        },
+      },
+    });
+
+    if (monthlyOrdersCount >= tenant.maxOrdersAllowedPerMonth) {
+      throw new Error(
+        `El comercio ha alcanzado el límite máximo de pedidos mensuales permitido por su plan actual (${tenant.maxOrdersAllowedPerMonth} pedidos). Por favor, contacta al administrador o actualiza el plan.`
+      );
+    }
+
     // 2. Find or Create Customer for this tenant
     let customer = await db.customer.findFirst({
       where: {

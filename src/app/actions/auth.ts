@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import * as crypto from "crypto";
+import { sendOTPEmail } from "@/lib/resend";
 
 // Use a fallback JWT-like/encrypted cookie mechanism.
 // Since we want standard Node.js crypto to avoid heavy dependencies,
@@ -52,6 +53,11 @@ function verifySession(token: string): { id: string; email: string } | null {
   }
 }
 
+// Helper to generate a 6-digit OTP code
+function generateOTPCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export async function registerGlobalUser(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -75,9 +81,62 @@ export async function registerGlobalUser(formData: FormData) {
         passwordHash,
         name,
         phone,
+        emailVerified: false,
       },
     });
 
+    // Generate Verification OTP
+    const otpCode = generateOTPCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Delete any existing codes for this email first
+    await db.verificationToken.deleteMany({ where: { email } });
+
+    await db.verificationToken.create({
+      data: {
+        email,
+        code: otpCode,
+        expiresAt,
+      },
+    });
+
+    // Send email
+    await sendOTPEmail(email, otpCode);
+
+    return { success: true, requiresOTP: true, email: user.email };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Error al registrar el usuario." };
+  }
+}
+
+export async function verifyOTP(email: string, code: string) {
+  if (!email || !code) {
+    return { success: false, error: "El email y el código son obligatorios." };
+  }
+
+  try {
+    const verificationToken = await db.verificationToken.findFirst({
+      where: { email, code },
+    });
+
+    if (!verificationToken) {
+      return { success: false, error: "Código inválido o incorrecto." };
+    }
+
+    if (verificationToken.expiresAt < new Date()) {
+      return { success: false, error: "El código ha expirado. Por favor, solicita uno nuevo." };
+    }
+
+    // Mark user as verified
+    const user = await db.globalUser.update({
+      where: { email },
+      data: { emailVerified: true },
+    });
+
+    // Delete verification token
+    await db.verificationToken.deleteMany({ where: { email } });
+
+    // Sign session and login
     const token = signSession({ id: user.id, email: user.email });
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -89,7 +148,42 @@ export async function registerGlobalUser(formData: FormData) {
 
     return { success: true, user: { id: user.id, email: user.email, name: user.name } };
   } catch (error: any) {
-    return { success: false, error: error.message || "Error al registrar el usuario." };
+    return { success: false, error: error.message || "Error al verificar el código OTP." };
+  }
+}
+
+export async function resendOTP(email: string) {
+  if (!email) {
+    return { success: false, error: "El email es obligatorio." };
+  }
+
+  try {
+    const user = await db.globalUser.findUnique({ where: { email } });
+    if (!user) {
+      return { success: false, error: "El usuario no existe." };
+    }
+
+    // Generate Verification OTP
+    const otpCode = generateOTPCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Delete any existing codes for this email
+    await db.verificationToken.deleteMany({ where: { email } });
+
+    await db.verificationToken.create({
+      data: {
+        email,
+        code: otpCode,
+        expiresAt,
+      },
+    });
+
+    // Send email
+    await sendOTPEmail(email, otpCode);
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Error al reenviar el código OTP." };
   }
 }
 
@@ -105,6 +199,20 @@ export async function loginGlobalUser(formData: FormData) {
     const user = await db.globalUser.findUnique({ where: { email } });
     if (!user || !verifyPassword(password, user.passwordHash)) {
       return { success: false, error: "Credenciales inválidas." };
+    }
+
+    if (!user.emailVerified) {
+      // If user exists but is not verified, generate code and ask for verification
+      const otpCode = generateOTPCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await db.verificationToken.deleteMany({ where: { email } });
+      await db.verificationToken.create({
+        data: { email, code: otpCode, expiresAt },
+      });
+
+      await sendOTPEmail(email, otpCode);
+      return { success: true, requiresOTP: true, email: user.email };
     }
 
     const token = signSession({ id: user.id, email: user.email });
@@ -144,6 +252,7 @@ export async function getCurrentGlobalUser() {
         email: true,
         name: true,
         phone: true,
+        isSuperAdmin: true,
       },
     });
 

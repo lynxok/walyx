@@ -50,6 +50,31 @@ export async function getProductsByTenant(tenantId: string, categoryId?: string)
 
 export async function createProduct(input: ProductInput) {
   try {
+    // Check tenant limits
+    const tenant = await db.tenant.findUnique({
+      where: { id: input.tenantId },
+      include: {
+        _count: {
+          select: { products: true }
+        }
+      }
+    });
+
+    if (!tenant) {
+      return { success: false, error: "El inquilino no existe." };
+    }
+
+    if (tenant.status === "SUSPENDED") {
+      return { success: false, error: "Tu cuenta está suspendida. Contacta a soporte o actualiza tu plan." };
+    }
+
+    if (tenant._count.products >= tenant.maxProductsAllowed) {
+      return {
+        success: false,
+        error: `Has alcanzado el límite máximo de productos para tu plan actual (${tenant.maxProductsAllowed} productos). Por favor, actualiza tu plan en el panel.`
+      };
+    }
+
     let finalPrice = input.price;
     if (input.categoryId) {
       const category = await db.category.findUnique({
