@@ -379,21 +379,26 @@ export default function ShopPublicPage() {
                 {Object.keys(weeklyPlanner).map((day) => (
                   <div key={day} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center border-b border-zinc-900/80 pb-4">
                     <span className="text-sm font-black text-amber-500 w-24">{day}</span>
-                    <select
-                      value={weeklyPlanner[day].productId}
-                      onChange={(e) => setWeeklyPlanner({
-                        ...weeklyPlanner,
-                        [day]: { ...weeklyPlanner[day], productId: e.target.value }
-                      })}
-                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full"
-                    >
-                      <option value="">-- No llevar vianda --</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (${p.price} | {p.calories || 0} kcal)
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative flex-1 w-full">
+                      <select
+                        value={weeklyPlanner[day].productId}
+                        onChange={(e) => setWeeklyPlanner({
+                          ...weeklyPlanner,
+                          [day]: { ...weeklyPlanner[day], productId: e.target.value }
+                        })}
+                        className="bg-zinc-950/80 border border-zinc-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-550/20 text-xs text-white p-3.5 pr-8 rounded-xl outline-none w-full appearance-none transition-all cursor-pointer"
+                      >
+                        <option value="" className="bg-zinc-950 text-zinc-400">-- No llevar vianda --</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id} className="bg-zinc-950 text-zinc-100">
+                            {p.name} (${p.price} | {p.calories || 0} kcal)
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
 
                     <div className="flex items-center gap-2">
                       <span className="text-zinc-500 text-xs">Cant:</span>
@@ -405,7 +410,7 @@ export default function ShopPublicPage() {
                           ...weeklyPlanner,
                           [day]: { ...weeklyPlanner[day], quantity: parseInt(e.target.value) || 1 }
                         })}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl w-14 text-center outline-none"
+                        className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl w-16 text-center outline-none transition-all"
                       />
                     </div>
 
@@ -417,7 +422,7 @@ export default function ShopPublicPage() {
                         ...weeklyPlanner,
                         [day]: { ...weeklyPlanner[day], notes: e.target.value }
                       })}
-                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl flex-1 w-full outline-none"
+                      className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl flex-1 w-full outline-none transition-all"
                     />
                   </div>
                 ))}

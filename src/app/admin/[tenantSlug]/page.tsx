@@ -84,13 +84,13 @@ export default function AdminDashboardPage() {
 
   // Weekly Menu states (for Viandas)
   const [weeklyMenu, setWeeklyMenu] = useState<Record<string, string>>({
-    Lunes: "Wok de Pollo con Vegetales",
+    Lunes: "Wok de Pollo con Vegetales y Arroz Integral",
     Martes: "Guiso Nutritivo de Lentejas Veggie",
-    Miércoles: "Salmón Grillado con Puré",
-    Jueves: "Wok de Pollo con Vegetales",
+    Miércoles: "Salmón Grillado con Puré de Calabaza",
+    Jueves: "Wok de Pollo con Vegetales y Arroz Integral",
     Viernes: "Guiso Nutritivo de Lentejas Veggie",
-    Sábado: "Salmón Grillado con Puré",
-    Domingo: "Menú Especial del Chef",
+    Sábado: "Salmón Grillado con Puré de Calabaza",
+    Domingo: "",
   });
 
   const fetchData = async () => {
@@ -654,12 +654,18 @@ export default function AdminDashboardPage() {
                 {Object.entries(weeklyMenu).map(([day, meal]) => (
                   <div key={day} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
                     <span className="text-sm font-black text-amber-500 w-24">{day}</span>
-                    <input 
-                      type="text"
+                    <select 
                       value={meal}
                       onChange={(e) => setWeeklyMenu({ ...weeklyMenu, [day]: e.target.value })}
                       className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full"
-                    />
+                    >
+                      <option value="">Ninguna vianda seleccionada</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                     <div className="flex items-center gap-2">
                       <span className="text-zinc-500 text-xs">Cupo:</span>
                       <input 
