@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Lock, Mail, Phone, User, Check, ShieldCheck } from "lucide-react";
@@ -8,7 +8,8 @@ import { getTenantBySlug } from "@/app/actions/tenant";
 import { loginGlobalUser, registerGlobalUser, verifyOTP, resendOTP } from "@/app/actions/auth";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 
-export default function ShopLoginPage() {
+// ─── Inner component (uses useSearchParams) ───────────────────────────────────
+function LoginPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -322,3 +323,20 @@ export default function ShopLoginPage() {
   );
 }
 
+// ─── Fallback de carga ─────────────────────────────────────────────────────────
+function LoginFallback() {
+  return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+    </div>
+  );
+}
+
+// ─── Export default envuelto en Suspense ──────────────────────────────────────
+export default function ShopLoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
