@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import * as crypto from "crypto";
