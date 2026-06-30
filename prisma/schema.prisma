@@ -76,17 +76,30 @@ model Product {
   portions       Int?     // Number of portions/slices
 }
 
+model GlobalUser {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  phone        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  customers    Customer[]
+}
+
 model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  address   String?
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String      @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  address      String?
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  globalUserId String?
+  globalUser   GlobalUser? @relation(fields: [globalUserId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@unique([email, tenantId])
 }

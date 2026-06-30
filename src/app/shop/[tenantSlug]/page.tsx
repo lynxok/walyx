@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ShoppingCart, 
@@ -14,13 +14,17 @@ import {
   Trash2,
   MapPin,
   Clock,
-  Sparkles
+  Sparkles,
+  LogIn,
+  LogOut,
+  User
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
 import { createOrder } from "@/app/actions/order";
 import { getWeeklyMenuByStartDate } from "@/app/actions/weeklyMenu";
 import { getHolidayForDate } from "@/lib/holidays";
+import { getCurrentGlobalUser, logoutGlobalUser } from "@/app/actions/auth";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
 
@@ -42,6 +46,7 @@ const TIME_SLOTS = [
 
 export default function ShopPublicPage() {
   const params = useParams();
+  const router = useRouter();
   const tenantSlug = params.tenantSlug as string;
 
   const [tenant, setTenant] = useState<any>(null);
@@ -50,6 +55,7 @@ export default function ShopPublicPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("TODAS");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [globalUser, setGlobalUser] = useState<any>(null);
 
   // Theme states
   const [logoUrl, setLogoUrl] = useState("");
@@ -122,6 +128,15 @@ export default function ShopPublicPage() {
   const fetchData = async () => {
     setLoading(true);
     setError("");
+
+    // Load active session if any
+    const user = await getCurrentGlobalUser();
+    if (user) {
+      setGlobalUser(user);
+      setCustomerName(user.name);
+      setCustomerEmail(user.email);
+      if (user.phone) setCustomerPhone(user.phone);
+    }
 
     const tenantRes = await getTenantBySlug(tenantSlug);
     if (!tenantRes.success || !tenantRes.data) {
@@ -291,6 +306,13 @@ export default function ShopPublicPage() {
   // Submit order for standard catalog (Ropa/Pastelería)
   const handleCheckoutCart = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!globalUser) {
+      // Redirect to login page
+      router.push(`/shop/${tenantSlug}/login?redirect=/shop/${tenantSlug}`);
+      return;
+    }
+
     if (!customerName || !customerEmail) {
       alert("Por favor completa tu nombre y correo electrónico.");
       return;
@@ -336,6 +358,7 @@ export default function ShopPublicPage() {
       deliveryZoneName: selectedZone.name,
       deliveryDate: new Date().toLocaleDateString("es-AR"),
       deliveryTimeSlot: selectedTimeSlot,
+      globalUserId: globalUser.id,
     });
 
     setCheckoutLoading(false);
@@ -352,6 +375,13 @@ export default function ShopPublicPage() {
   // Submit order for Weekly Planner (Viandas)
   const handleCheckoutWeeklyPlanner = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!globalUser) {
+      // Redirect to login page
+      router.push(`/shop/${tenantSlug}/login?redirect=/shop/${tenantSlug}`);
+      return;
+    }
+
     if (!customerName || !customerEmail) {
       alert("Por favor completa tu nombre y correo electrónico.");
       return;
@@ -394,6 +424,7 @@ export default function ShopPublicPage() {
       deliveryZoneName: selectedZone.name,
       deliveryDate: `${currentWeek.label} (${currentWeek.dateRange})`,
       deliveryTimeSlot: selectedTimeSlot,
+      globalUserId: globalUser.id,
     });
 
     setCheckoutLoading(false);
@@ -481,20 +512,55 @@ export default function ShopPublicPage() {
           </div>
         </div>
 
-        {!isViandaStore && (
-          <button 
-            onClick={() => setIsCartOpen(true)}
-            className="p-3 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {cart.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-rose-600 border border-zinc-950 text-white font-black text-[9px] w-5 h-5 rounded-full flex items-center justify-center">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)}
-              </span>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {globalUser ? (
+            <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-800 py-1.5 px-3 rounded-2xl">
+              <div className="w-6 h-6 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-[10px] text-zinc-100 font-bold max-w-[100px] truncate">{globalUser.name}</span>
+                <span className="text-[8px] text-zinc-550 truncate">Mi Cuenta</span>
+              </div>
+              <button
+                onClick={async () => {
+                  await logoutGlobalUser();
+                  setGlobalUser(null);
+                  setCustomerName("");
+                  setCustomerEmail("");
+                  setCustomerPhone("");
+                  router.refresh();
+                }}
+                title="Cerrar Sesión"
+                className="p-1 hover:text-red-400 text-zinc-500 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Link href={`/shop/${tenantSlug}/login?redirect=/shop/${tenantSlug}`}>
+              <button className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 py-2 px-4 text-xs font-bold text-zinc-300 rounded-xl hover:bg-zinc-800 hover:text-white transition-all cursor-pointer">
+                <LogIn className="w-3.5 h-3.5" />
+                Ingresar
+              </button>
+            </Link>
+          )}
+
+          {!isViandaStore && (
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="p-3 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cart.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-rose-600 border border-zinc-950 text-white font-black text-[9px] w-5 h-5 rounded-full flex items-center justify-center">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Content Area */}

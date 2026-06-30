@@ -23,6 +23,7 @@ export type CreateOrderInput = {
   deliveryDate?: string;
   deliveryTimeSlot?: string;
   items: OrderItemInput[];
+  globalUserId?: string;
 };
 
 export async function createOrder(input: CreateOrderInput) {
@@ -56,16 +57,18 @@ export async function createOrder(input: CreateOrderInput) {
           phone: input.customerPhone,
           address: input.customerAddress,
           tenantId: input.tenantId,
+          globalUserId: input.globalUserId || null,
         },
       });
     } else {
-      // Optionally update phone and address
+      // Optionally update phone, address and globalUserId
       customer = await db.customer.update({
         where: { id: customer.id },
         data: {
           name: input.customerName,
           phone: input.customerPhone || customer.phone,
           address: input.customerAddress || customer.address,
+          globalUserId: input.globalUserId || customer.globalUserId,
         },
       });
     }
