@@ -57,7 +57,7 @@ export default function Home() {
       {/* Navbar */}
       <header className="border-b border-white/5 bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
         <Link href="/" className="flex items-center gap-2 font-black text-2xl tracking-tight text-white">
-          LYNX <span className="text-amber-500 font-medium">Cocina & Ventas</span>
+          Walyx <span className="text-amber-500 font-medium">SaaS de Venta</span>
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/onboarding">
@@ -141,7 +141,7 @@ export default function Home() {
                   <Users className="w-7 h-7" />
                 </div>
                 <div className="inline-block self-start px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-xs font-semibold">
-                  Función Exclusiva LYNX
+                  Función Exclusiva Walyx
                 </div>
                 <h3 className="text-2xl font-black text-white">Vaca Club (Compra Grupal)</h3>
                 <p className="text-zinc-400 text-sm leading-relaxed">
@@ -383,13 +383,13 @@ export default function Home() {
       <footer className="border-t border-white/5 bg-zinc-950/80 py-10 px-6 text-center text-xs text-zinc-650 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src="/logo-lynx-white.png" alt="LYNX Logo" className="h-8 w-auto object-contain opacity-80" />
+            <img src="/walyx-logo.png" alt="Walyx Logo" className="h-9 w-auto object-contain opacity-95" />
             <div className="text-left border-l border-zinc-800 pl-3">
-              <p className="font-bold text-zinc-400">LYNX Consulting</p>
-              <p className="text-[10px] text-zinc-600">SaaS Multi-tenant Conversacional</p>
+              <p className="font-bold text-zinc-400">Walyx</p>
+              <p className="text-[10px] text-zinc-600">SaaS de Venta conversacional</p>
             </div>
           </div>
-          <p className="text-zinc-600 text-left sm:text-right">© 2026 LYNX Consulting. Todos los derechos reservados.</p>
+          <p className="text-zinc-600 text-left sm:text-right">© 2026 Walyx / by lnx.com.ar. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-zinc-500 font-medium">
             <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Multi-Tenant Aislado</span>
           </div>
