@@ -70,6 +70,44 @@ export async function loginTenant(slug: string, password: string) {
     return { success: false, error: "El nombre del negocio y la contraseña son obligatorios." };
   }
 
+  // Interceptar si intenta ingresar con un correo electrónico en lugar de un slug
+  if (slug.includes("@")) {
+    try {
+      const email = slug.trim().toLowerCase();
+      const user = await db.globalUser.findUnique({ where: { email } });
+      
+      if (!user || !verifyPassword(password, user.passwordHash)) {
+        return { success: false, error: "Credenciales de administrador inválidas." };
+      }
+
+      if (!user.isSuperAdmin) {
+        return { success: false, error: "Este usuario no posee privilegios de Superadmin." };
+      }
+
+      // Iniciar sesión global (crear la cookie global_user_session)
+      // Generamos el token usando el SESSION_SECRET
+      const payload = Buffer.from(
+        JSON.stringify({ id: user.id, email: user.email, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 })
+      ).toString("base64url");
+      const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+      hmac.update(payload);
+      const signature = hmac.digest("base64url");
+      const token = `${payload}.${signature}`;
+
+      const cookieStore = await cookies();
+      cookieStore.set("global_user_session", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+
+      return { success: true, isSuperAdmin: true };
+    } catch (e: any) {
+      return { success: false, error: "Error al autenticar Superadmin: " + e.message };
+    }
+  }
+
   try {
     const tenant = await db.tenant.findUnique({
       where: { slug: slug.trim().toLowerCase() },
@@ -105,7 +143,7 @@ export async function loginTenant(slug: string, password: string) {
       path: "/",
     });
 
-    return { success: true, slug: tenant.slug, name: tenant.name };
+    return { success: true, slug: tenant.slug, name: tenant.name, isSuperAdmin: false };
   } catch (e: any) {
     return { success: false, error: e.message || "Error al iniciar sesión." };
   }

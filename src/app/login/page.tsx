@@ -43,11 +43,16 @@ function LoginContent() {
     setErrorBusiness("");
     setLoadingBusiness(true);
 
-    const res = await loginTenant(slug.trim().toLowerCase(), password);
+    // Si es un email no forzamos guiones en el slug
+    const res = await loginTenant(slug.trim(), password);
     setLoadingBusiness(false);
 
     if (res.success) {
-      router.push(`/admin/${res.slug}`);
+      if (res.isSuperAdmin) {
+        router.push("/admin/master");
+      } else {
+        router.push(`/admin/${res.slug}`);
+      }
       router.refresh();
     } else {
       setErrorBusiness(res.error || "Error al iniciar sesión.");
@@ -158,8 +163,15 @@ function LoginContent() {
                       <input
                         type="text"
                         value={slug}
-                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
-                        placeholder="ej: moda-urbana"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.includes("@")) {
+                            setSlug(val); // Permitir email crudo sin forzar guiones
+                          } else {
+                            setSlug(val.toLowerCase().replace(/\s+/g, "-"));
+                          }
+                        }}
+                        placeholder="ej: moda-urbana o email@ejemplo.com"
                         required
                         className="bg-zinc-950/80 border border-zinc-800 focus:border-blue-500 text-sm text-white pl-10 pr-4 py-3.5 rounded-xl w-full outline-none transition-all placeholder:text-zinc-600"
                       />
