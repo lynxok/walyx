@@ -20,6 +20,7 @@ import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
 import { createOrder } from "@/app/actions/order";
 import { getWeeklyMenuByStartDate } from "@/app/actions/weeklyMenu";
+import { getHolidayForDate } from "@/lib/holidays";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
 
@@ -56,14 +57,14 @@ export default function ShopPublicPage() {
 
   // Dynamic Weekly Planner States (for Viandas)
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
-  const [weeklyPlanner, setWeeklyPlanner] = useState<Record<string, { productId: string; quantity: number; notes: string }>>({
-    Lunes: { productId: "", quantity: 1, notes: "" },
-    Martes: { productId: "", quantity: 1, notes: "" },
-    Miércoles: { productId: "", quantity: 1, notes: "" },
-    Jueves: { productId: "", quantity: 1, notes: "" },
-    Viernes: { productId: "", quantity: 1, notes: "" },
-    Sábado: { productId: "", quantity: 1, notes: "" },
-    Domingo: { productId: "", quantity: 1, notes: "" },
+  const [weeklyPlanner, setWeeklyPlanner] = useState<Record<string, { productId: string; quantity: number; notes: string; isClosed: boolean; holidayName: string | null }>>({
+    Lunes: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Martes: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Miércoles: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Jueves: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Viernes: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Sábado: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
+    Domingo: { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null },
   });
 
   const getPlanningWeeks = () => {
@@ -174,13 +175,15 @@ export default function ShopPublicPage() {
 
       const initialPlanner: any = {};
       ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].forEach((day) => {
-        initialPlanner[day] = { productId: "", quantity: 1, notes: "" };
+        initialPlanner[day] = { productId: "", quantity: 1, notes: "", isClosed: false, holidayName: null };
       });
 
       if (res.success && res.data && res.data.length > 0) {
         res.data.forEach((dayItem: any) => {
           if (initialPlanner[dayItem.dayName]) {
             initialPlanner[dayItem.dayName].productId = dayItem.productId || "";
+            initialPlanner[dayItem.dayName].isClosed = dayItem.isClosed || false;
+            initialPlanner[dayItem.dayName].holidayName = dayItem.holidayName || null;
           }
         });
       } else {
@@ -195,11 +198,29 @@ export default function ShopPublicPage() {
           Domingo: "",
         };
 
+        const dayOffsets: Record<string, number> = {
+          Lunes: 0,
+          Martes: 1,
+          Miércoles: 2,
+          Jueves: 3,
+          Viernes: 4,
+          Sábado: 5,
+          Domingo: 6
+        };
+
         Object.entries(oldDefaults).forEach(([day, name]) => {
           const match = products.find((p) => p.name === name);
-          if (match) {
-            initialPlanner[day].productId = match.id;
-          }
+          const mon = new Date(currentWeek.startDateStr);
+          mon.setUTCDate(mon.getUTCDate() + dayOffsets[day]);
+          const holiday = getHolidayForDate(mon);
+
+          initialPlanner[day] = {
+            productId: match ? match.id : "",
+            quantity: 1,
+            notes: "",
+            isClosed: holiday !== null,
+            holidayName: holiday
+          };
         });
       }
 
@@ -476,56 +497,81 @@ export default function ShopPublicPage() {
               </div>
 
               <div className="flex flex-col gap-4 bg-zinc-900/10 border border-zinc-900 rounded-3xl p-6">
-                {Object.keys(weeklyPlanner).map((day) => (
-                  <div key={day} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center border-b border-zinc-900/80 pb-4">
-                    <span className="text-sm font-black text-amber-500 w-24">{day}</span>
-                    <div className="relative flex-1 w-full">
-                      <select
-                        value={weeklyPlanner[day].productId}
-                        onChange={(e) => setWeeklyPlanner({
-                          ...weeklyPlanner,
-                          [day]: { ...weeklyPlanner[day], productId: e.target.value }
-                        })}
-                        className="bg-zinc-950/80 border border-zinc-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-550/20 text-xs text-white p-3.5 pr-8 rounded-xl outline-none w-full appearance-none transition-all cursor-pointer"
-                      >
-                        <option value="" className="bg-zinc-950 text-zinc-400">-- No llevar vianda --</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id} className="bg-zinc-950 text-zinc-100">
-                            {p.name} (${p.price} | {p.calories || 0} kcal)
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                {Object.keys(weeklyPlanner).map((day) => {
+                  const isClosedHoliday = weeklyPlanner[day].isClosed;
+                  const holidayName = weeklyPlanner[day].holidayName;
+                  return (
+                    <div 
+                      key={day} 
+                      className={`flex flex-col sm:flex-row gap-4 items-start sm:items-center border-b border-zinc-900/80 pb-4 transition-all duration-300 ${
+                        isClosedHoliday ? "opacity-50" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                        <span className="text-sm font-black text-amber-500">{day}</span>
+                        {isClosedHoliday && (
+                          <span className="text-[8px] bg-red-500/15 text-red-400 border border-red-500/20 px-1 py-0.5 rounded font-black uppercase text-center w-fit">
+                            {holidayName ? "Feriado" : "Cerrado"}
+                          </span>
+                        )}
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 text-xs">Cant:</span>
-                      <input 
-                        type="number" 
-                        min="1"
-                        value={weeklyPlanner[day].quantity}
-                        onChange={(e) => setWeeklyPlanner({
-                          ...weeklyPlanner,
-                          [day]: { ...weeklyPlanner[day], quantity: parseInt(e.target.value) || 1 }
-                        })}
-                        className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl w-16 text-center outline-none transition-all"
-                      />
-                    </div>
+                      {isClosedHoliday ? (
+                        <div className="flex-1 w-full bg-zinc-950/40 border border-zinc-900/50 rounded-xl p-3 text-xs text-red-400/80 font-bold italic flex items-center gap-1.5 animate-fade-in">
+                          🚫 {holidayName ? `Feriado: ${holidayName}` : "Cerrado"} - Sin reparto de viandas
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative flex-1 w-full">
+                            <select
+                              value={weeklyPlanner[day].productId}
+                              onChange={(e) => setWeeklyPlanner({
+                                ...weeklyPlanner,
+                                [day]: { ...weeklyPlanner[day], productId: e.target.value }
+                              })}
+                              className="bg-zinc-950/80 border border-zinc-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-550/20 text-xs text-white p-3.5 pr-8 rounded-xl outline-none w-full appearance-none transition-all cursor-pointer"
+                            >
+                              <option value="" className="bg-zinc-950 text-zinc-400">-- No llevar vianda --</option>
+                              {products.map((p) => (
+                                <option key={p.id} value={p.id} className="bg-zinc-950 text-zinc-100">
+                                  {p.name} (${p.price} | {p.calories || 0} kcal)
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                          </div>
 
-                    <input 
-                      type="text" 
-                      placeholder="Nota (ej. sin cebolla)"
-                      value={weeklyPlanner[day].notes}
-                      onChange={(e) => setWeeklyPlanner({
-                        ...weeklyPlanner,
-                        [day]: { ...weeklyPlanner[day], notes: e.target.value }
-                      })}
-                      className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl flex-1 w-full outline-none transition-all"
-                    />
-                  </div>
-                ))}
+                          <div className="flex items-center gap-2">
+                            <span className="text-zinc-500 text-xs">Cant:</span>
+                            <input 
+                              type="number" 
+                              min="1"
+                              value={weeklyPlanner[day].quantity}
+                              onChange={(e) => setWeeklyPlanner({
+                                ...weeklyPlanner,
+                                [day]: { ...weeklyPlanner[day], quantity: parseInt(e.target.value) || 1 }
+                              })}
+                              className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl w-16 text-center outline-none transition-all"
+                            />
+                          </div>
+
+                          <input 
+                            type="text" 
+                            placeholder="Nota (ej. sin cebolla)"
+                            value={weeklyPlanner[day].notes}
+                            onChange={(e) => setWeeklyPlanner({
+                              ...weeklyPlanner,
+                              [day]: { ...weeklyPlanner[day], notes: e.target.value }
+                            })}
+                            className="bg-zinc-950 border border-zinc-900 focus:border-amber-500 text-xs text-white p-3.5 rounded-xl flex-1 w-full outline-none transition-all"
+                          />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

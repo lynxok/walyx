@@ -1,11 +1,24 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getHolidayForDate } from "@/lib/holidays";
 
 export type WeeklyMenuDayInput = {
   dayName: string;
   productId: string;
   limit?: number;
+  isClosed?: boolean;
+  holidayName?: string | null;
+};
+
+const dayOffsets: Record<string, number> = {
+  Lunes: 0,
+  Martes: 1,
+  Miércoles: 2,
+  Jueves: 3,
+  Viernes: 4,
+  Sábado: 5,
+  Domingo: 6
 };
 
 // Helper to normalize the start date to a standard string or Date
@@ -33,12 +46,42 @@ export async function getWeeklyMenuByStartDate(tenantId: string, startDateStr: s
       },
     });
 
-    // If no menu exists for this week yet, return empty list or default placeholders
-    if (!menu) {
-      return { success: true, data: [] };
+    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const results = [];
+
+    for (const dayName of dayNames) {
+      // Calculate specific calendar date of this weekday
+      const date = new Date(startDate);
+      date.setUTCDate(startDate.getUTCDate() + dayOffsets[dayName]);
+      const calculatedHoliday = getHolidayForDate(date);
+
+      const dbDay = menu?.days.find((d) => d.dayName === dayName);
+
+      if (dbDay) {
+        results.push({
+          id: dbDay.id,
+          dayName,
+          productId: dbDay.productId || "",
+          limit: dbDay.limit || 30,
+          isClosed: dbDay.isClosed,
+          holidayName: dbDay.holidayName || calculatedHoliday,
+          product: dbDay.product,
+        });
+      } else {
+        // Closed by default if it is a holiday
+        results.push({
+          id: "",
+          dayName,
+          productId: "",
+          limit: 30,
+          isClosed: calculatedHoliday !== null,
+          holidayName: calculatedHoliday,
+          product: null,
+        });
+      }
     }
 
-    return { success: true, data: menu.days };
+    return { success: true, data: results };
   } catch (error: any) {
     console.error("Error getting weekly menu: ", error);
     return { success: false, error: "Error al cargar el menú semanal" };
@@ -74,7 +117,6 @@ export async function saveWeeklyMenu(
 
     // 2. Upsert each day's selection
     for (const item of daysData) {
-      // Find existing day selection
       const existingDay = await db.weeklyMenuDay.findUnique({
         where: {
           menuId_dayName: {
@@ -90,6 +132,8 @@ export async function saveWeeklyMenu(
           data: {
             productId: item.productId || null,
             limit: item.limit ?? 30,
+            isClosed: item.isClosed ?? false,
+            holidayName: item.holidayName || null,
           },
         });
       } else {
@@ -99,6 +143,8 @@ export async function saveWeeklyMenu(
             dayName: item.dayName,
             productId: item.productId || null,
             limit: item.limit ?? 30,
+            isClosed: item.isClosed ?? false,
+            holidayName: item.holidayName || null,
           },
         });
       }

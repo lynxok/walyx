@@ -29,6 +29,7 @@ import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
 import { getProductsByTenant, createProduct, updateProduct, deleteProduct } from "@/app/actions/product";
 import { getWeeklyMenuByStartDate, saveWeeklyMenu } from "@/app/actions/weeklyMenu";
+import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 
@@ -93,14 +94,14 @@ export default function AdminDashboardPage() {
 
   // Dynamic Weekly Menu states (for Viandas)
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
-  const [weeklyMenuData, setWeeklyMenuData] = useState<Record<string, { productId: string; limit: number }>>({
-    Lunes: { productId: "", limit: 30 },
-    Martes: { productId: "", limit: 30 },
-    Miércoles: { productId: "", limit: 30 },
-    Jueves: { productId: "", limit: 30 },
-    Viernes: { productId: "", limit: 30 },
-    Sábado: { productId: "", limit: 30 },
-    Domingo: { productId: "", limit: 30 },
+  const [weeklyMenuData, setWeeklyMenuData] = useState<Record<string, { productId: string; limit: number; isClosed: boolean; holidayName: string | null }>>({
+    Lunes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Martes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Miércoles: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Jueves: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Viernes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Sábado: { productId: "", limit: 30, isClosed: false, holidayName: null },
+    Domingo: { productId: "", limit: 30, isClosed: false, holidayName: null },
   });
 
   const getPlanningWeeks = () => {
@@ -371,14 +372,24 @@ export default function AdminDashboardPage() {
       const currentWeek = planningWeeks[selectedWeekIndex];
       const res = await getWeeklyMenuByStartDate(tenant.id, currentWeek.startDateStr);
       
-      const newMenu: Record<string, { productId: string; limit: number }> = {
-        Lunes: { productId: "", limit: 30 },
-        Martes: { productId: "", limit: 30 },
-        Miércoles: { productId: "", limit: 30 },
-        Jueves: { productId: "", limit: 30 },
-        Viernes: { productId: "", limit: 30 },
-        Sábado: { productId: "", limit: 30 },
-        Domingo: { productId: "", limit: 30 },
+      const dayOffsets: Record<string, number> = {
+        Lunes: 0,
+        Martes: 1,
+        Miércoles: 2,
+        Jueves: 3,
+        Viernes: 4,
+        Sábado: 5,
+        Domingo: 6
+      };
+
+      const newMenu: Record<string, { productId: string; limit: number; isClosed: boolean; holidayName: string | null }> = {
+        Lunes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Martes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Miércoles: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Jueves: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Viernes: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Sábado: { productId: "", limit: 30, isClosed: false, holidayName: null },
+        Domingo: { productId: "", limit: 30, isClosed: false, holidayName: null },
       };
 
       if (res.success && res.data && res.data.length > 0) {
@@ -387,6 +398,8 @@ export default function AdminDashboardPage() {
             newMenu[dayItem.dayName] = {
               productId: dayItem.productId || "",
               limit: dayItem.limit || 30,
+              isClosed: dayItem.isClosed || false,
+              holidayName: dayItem.holidayName || null,
             };
           }
         });
@@ -404,9 +417,16 @@ export default function AdminDashboardPage() {
 
         Object.entries(oldDefaults).forEach(([day, name]) => {
           const match = products.find((p) => p.name === name);
-          if (match) {
-            newMenu[day] = { productId: match.id, limit: 30 };
-          }
+          const mon = new Date(currentWeek.startDateStr);
+          mon.setUTCDate(mon.getUTCDate() + dayOffsets[day]);
+          const holiday = getHolidayForDate(mon);
+
+          newMenu[day] = {
+            productId: match ? match.id : "",
+            limit: 30,
+            isClosed: holiday !== null,
+            holidayName: holiday
+          };
         });
       }
 
@@ -423,6 +443,8 @@ export default function AdminDashboardPage() {
       dayName,
       productId: info.productId,
       limit: info.limit,
+      isClosed: info.isClosed,
+      holidayName: info.holidayName,
     }));
 
     const res = await saveWeeklyMenu(tenant.id, currentWeek.startDateStr, payload);
@@ -864,38 +886,80 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                {Object.entries(weeklyMenuData).map(([day, info]) => (
-                  <div key={day} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
-                    <span className="text-sm font-black text-amber-500 w-24">{day}</span>
-                    <select 
-                      value={info.productId}
-                      onChange={(e) => setWeeklyMenuData({
-                        ...weeklyMenuData,
-                        [day]: { ...info, productId: e.target.value }
-                      })}
-                      className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full animate-fade-in"
+                {Object.entries(weeklyMenuData).map(([day, info]: [string, any]) => {
+                  const hasHoliday = !!info.holidayName;
+                  return (
+                    <div 
+                      key={day} 
+                      className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-4 transition-all duration-300 ${
+                        info.isClosed ? "opacity-50" : ""
+                      }`}
                     >
-                      <option value="">Ninguna vianda seleccionada</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 text-xs">Cupo:</span>
-                      <input 
-                        type="number"
-                        value={info.limit}
+                      <div className="flex flex-col gap-1 w-44 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-black text-amber-500">{day}</span>
+                          {info.isClosed && (
+                            <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-black uppercase">
+                              Cerrado
+                            </span>
+                          )}
+                        </div>
+                        {hasHoliday && (
+                          <span className="text-[9px] text-red-400 font-semibold leading-none">
+                            🎉 Feriado: {info.holidayName}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <select 
+                        disabled={info.isClosed}
+                        value={info.productId}
                         onChange={(e) => setWeeklyMenuData({
                           ...weeklyMenuData,
-                          [day]: { ...info, limit: parseInt(e.target.value) || 0 }
+                          [day]: { ...info, productId: e.target.value }
                         })}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl w-16 text-center outline-none"
-                      />
+                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none flex-1 w-full animate-fade-in disabled:cursor-not-allowed"
+                      >
+                        <option value="">Ninguna vianda seleccionada</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-zinc-500 text-xs">Cupo:</span>
+                          <input 
+                            type="number"
+                            disabled={info.isClosed}
+                            value={info.limit}
+                            onChange={(e) => setWeeklyMenuData({
+                              ...weeklyMenuData,
+                              [day]: { ...info, limit: parseInt(e.target.value) || 0 }
+                            })}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl w-16 text-center outline-none disabled:cursor-not-allowed"
+                          />
+                        </div>
+
+                        <label className="flex items-center gap-1.5 text-[10px] text-zinc-400 cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={info.isClosed}
+                            onChange={(e) => setWeeklyMenuData({
+                              ...weeklyMenuData,
+                              [day]: { ...info, isClosed: e.target.checked }
+                            })}
+                            className="accent-red-500 rounded"
+                          />
+                          Cerrar Día
+                        </label>
+                      </div>
+
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <PremiumButton variant="primary" size="sm" onClick={handleSaveWeeklyMenu} className="self-end mt-4 animate-pulse-slow">
                   Guardar Configuración de Menú
                 </PremiumButton>

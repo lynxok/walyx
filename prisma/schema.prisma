@@ -133,15 +133,17 @@ model WeeklyMenu {
 }
 
 model WeeklyMenuDay {
-  id        String     @id @default(uuid())
-  menuId    String
-  menu      WeeklyMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  dayName   String     // "Lunes", "Martes", etc.
-  productId String?
-  product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
-  limit     Int        @default(30)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(uuid())
+  menuId      String
+  menu        WeeklyMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dayName     String     // "Lunes", "Martes", etc.
+  productId   String?
+  product     Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  limit       Int        @default(30)
+  isClosed    Boolean    @default(false)
+  holidayName String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@unique([menuId, dayName])
 }
