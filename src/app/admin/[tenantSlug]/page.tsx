@@ -62,6 +62,7 @@ const MOCK_KANBAN_ORDERS = [
       { name: "Ensalada César", quantity: 1, variant: "Con pollo extra", price: 450, notes: "Aderezo aparte" }
     ],
     total: 3750,
+    createdAt: new Date(),
   },
   {
     id: "ORD-9479",
@@ -81,6 +82,7 @@ const MOCK_KANBAN_ORDERS = [
       { name: "Tarta de Frutillas Royale", quantity: 1, variant: "Familiar (8 porciones)", price: 2400, notes: "Escribir 'Feliz Cumple' en la caja" }
     ],
     total: 2800,
+    createdAt: new Date(),
   },
   {
     id: "ORD-9470",
@@ -100,6 +102,7 @@ const MOCK_KANBAN_ORDERS = [
       { name: "Buzo Oversized Black", quantity: 1, variant: "Talle L / Algodón Rústico", price: 5400, notes: "Entregar en portería si no respondo" }
     ],
     total: 5400,
+    createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago
   }
 ];
 
@@ -108,6 +111,8 @@ export default function AdminDashboardPage() {
   const [kanbanOrders, setKanbanOrders] = useState(MOCK_KANBAN_ORDERS);
   const [draggingOrderId, setDraggingOrderId] = useState<string | null>(null);
   const [hoveredColumnStatus, setHoveredColumnStatus] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewFilter, setViewFilter] = useState<"24H" | "ALL">("24H");
   const params = useParams();
   const router = useRouter();
   const tenantSlug = params.tenantSlug as string;
@@ -248,6 +253,37 @@ export default function AdminDashboardPage() {
   };
 
   const planningWeeks = getPlanningWeeks();
+
+  const matchesSearch = (o: any, query: string) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return o.id.toLowerCase().includes(q) || o.customer.name.toLowerCase().includes(q);
+  };
+
+  const isRecent = (createdAt: any) => {
+    if (!createdAt) return false;
+    const createdTime = new Date(createdAt).getTime();
+    return (Date.now() - createdTime) <= 24 * 60 * 60 * 1000;
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() !== "" && viewFilter === "24H") {
+      const match24h = kanbanOrders.some(o => {
+        const matches = matchesSearch(o, searchQuery);
+        const isDeliveredOrCancelled = o.status === "DELIVERED" || o.status === "CANCELLED";
+        const isWithin24h = isRecent(o.createdAt);
+        const passesTemporal = !isDeliveredOrCancelled || isWithin24h;
+        return matches && passesTemporal;
+      });
+
+      if (!match24h) {
+        const matchAll = kanbanOrders.some(o => matchesSearch(o, searchQuery));
+        if (matchAll) {
+          setViewFilter("ALL");
+        }
+      }
+    }
+  }, [searchQuery, viewFilter, kanbanOrders]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -788,6 +824,50 @@ export default function AdminDashboardPage() {
                 <p className="text-xs text-zinc-500 mt-0.5">Administra el flujo de preparación y entrega de tus pedidos.</p>
               </div>
 
+              {/* Search and Filter Bar */}
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-zinc-900/20 border border-zinc-900 p-4 rounded-2xl">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por ID de pedido o nombre del cliente..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-xs text-white pl-10 pr-4 py-2.5 rounded-xl outline-none transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center bg-zinc-950 border border-zinc-850 p-1 rounded-xl shrink-0 self-start sm:self-center">
+                  <button
+                    onClick={() => setViewFilter("24H")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                      viewFilter === "24H"
+                        ? "bg-zinc-800 text-white"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    Últimas 24 Horas
+                  </button>
+                  <button
+                    onClick={() => setViewFilter("ALL")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                      viewFilter === "ALL"
+                        ? "bg-zinc-800 text-white"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    Histórico Completo
+                  </button>
+                </div>
+              </div>
+
               {/* Kanban Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                 {[
@@ -820,16 +900,25 @@ export default function AdminDashboardPage() {
                     label: "Entregados",
                     colorClass: "text-emerald-400",
                     badgeColorClass: "bg-emerald-500/10 text-emerald-400",
-                    deliveredText: "Entregado"
+                    deliveredText: "Entregado",
+                    show24hBadge: true
                   },
                   {
                     status: "CANCELLED",
                     label: "Cancelados",
                     colorClass: "text-zinc-500",
-                    badgeColorClass: "bg-zinc-800 text-zinc-400"
+                    badgeColorClass: "bg-zinc-800 text-zinc-400",
+                    show24hBadge: true
                   }
                 ].map((col) => {
-                  const filteredOrders = kanbanOrders.filter(o => o.status === col.status);
+                  const filteredOrders = kanbanOrders.filter(o => {
+                    if (o.status !== col.status) return false;
+                    if (!matchesSearch(o, searchQuery)) return false;
+                    if (viewFilter === "24H" && (col.status === "DELIVERED" || col.status === "CANCELLED")) {
+                      if (!isRecent(o.createdAt)) return false;
+                    }
+                    return true;
+                  });
                   const isHovered = hoveredColumnStatus === col.status;
                   return (
                     <div 
@@ -862,7 +951,14 @@ export default function AdminDashboardPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between border-b border-zinc-950 pb-2.5">
-                        <span className={`text-xs font-black uppercase tracking-wider ${col.colorClass}`}>{col.label}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-xs font-black uppercase tracking-wider ${col.colorClass}`}>{col.label}</span>
+                          {col.show24hBadge && viewFilter === "24H" && (
+                            <span className="text-[9px] px-1.5 py-0.5 bg-zinc-800 text-zinc-400 border border-zinc-700/50 rounded font-semibold uppercase tracking-tight scale-90 origin-left">
+                              últimas 24h
+                            </span>
+                          )}
+                        </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${col.badgeColorClass}`}>
                           {filteredOrders.length}
                         </span>
@@ -946,6 +1042,26 @@ export default function AdminDashboardPage() {
                               </div>
                             );
                           })
+                        )}
+                        {viewFilter === "24H" && (col.status === "DELIVERED" || col.status === "CANCELLED") && (
+                          (() => {
+                            const hiddenCount = kanbanOrders.filter(o => 
+                              o.status === col.status && 
+                              matchesSearch(o, searchQuery) && 
+                              !isRecent(o.createdAt)
+                            ).length;
+                            if (hiddenCount > 0) {
+                              return (
+                                <button
+                                  onClick={() => setViewFilter("ALL")}
+                                  className="w-full py-4 border border-dashed border-zinc-800 hover:border-amber-500/40 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-bold text-zinc-500 hover:text-amber-400 hover:bg-amber-500/[0.01] transition-all"
+                                >
+                                  + Ver anteriores ({hiddenCount})
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()
                         )}
                       </div>
                     </div>
