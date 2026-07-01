@@ -173,3 +173,32 @@ export async function deleteProduct(id: string) {
     return { success: false, error: "Error al eliminar el producto" };
   }
 }
+
+export type ProductBulkUpdateInput = {
+  id: string;
+  price?: number;
+  stock?: number;
+  isActive?: boolean;
+};
+
+export async function updateProductsBulk(updates: ProductBulkUpdateInput[]) {
+  try {
+    const result = await db.$transaction(
+      updates.map((upd) =>
+        db.product.update({
+          where: { id: upd.id },
+          data: {
+            ...(upd.price !== undefined ? { price: upd.price } : {}),
+            ...(upd.stock !== undefined ? { stock: upd.stock } : {}),
+            ...(upd.isActive !== undefined ? { isActive: upd.isActive } : {}),
+          },
+        })
+      )
+    );
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error("Error bulk updating products: ", error);
+    return { success: false, error: "Error al actualizar los productos en lote" };
+  }
+}
+
