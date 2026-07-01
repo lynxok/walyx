@@ -23,7 +23,12 @@ import {
   Loader2,
   CheckCircle,
   Clock,
-  CheckSquare
+  CheckSquare,
+  X,
+  Mail,
+  Phone,
+  MapPin,
+  Info
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
@@ -37,7 +42,69 @@ import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettin
 import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy, Search, HelpCircle, BookOpen, ChevronDown } from "lucide-react";
 import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 
+const MOCK_KANBAN_ORDERS = [
+  {
+    id: "ORD-9481",
+    customer: {
+      name: "Juan Pérez",
+      email: "juan.perez@example.com",
+      phone: "+54 9 11 5555-1234",
+      address: "Av. Cabildo 1540, 4° B, CABA",
+    },
+    status: "PENDING",
+    paymentMethod: "Mercado Pago",
+    paymentStatus: "Aprobado",
+    deliveryCost: 450,
+    deliveryZone: "Belgrano / Palermo",
+    dateTimeSlot: "Hoy, 12:00 - 14:00 hs",
+    products: [
+      { name: "Vianda Keto", quantity: 2, variant: "Baja en carbohidratos", price: 1650, notes: "Sin cebolla por favor" },
+      { name: "Ensalada César", quantity: 1, variant: "Con pollo extra", price: 450, notes: "Aderezo aparte" }
+    ],
+    total: 3750,
+  },
+  {
+    id: "ORD-9479",
+    customer: {
+      name: "María López",
+      email: "maria.lopez@gmail.com",
+      phone: "+54 9 11 4444-5678",
+      address: "Gorriti 4321, Palermo, CABA",
+    },
+    status: "PREPARING",
+    paymentMethod: "Transferencia Bancaria",
+    paymentStatus: "Pendiente de Verificación",
+    deliveryCost: 400,
+    deliveryZone: "Palermo",
+    dateTimeSlot: "Hoy, 19:00 - 21:00 hs",
+    products: [
+      { name: "Tarta de Frutillas Royale", quantity: 1, variant: "Familiar (8 porciones)", price: 2400, notes: "Escribir 'Feliz Cumple' en la caja" }
+    ],
+    total: 2800,
+  },
+  {
+    id: "ORD-9470",
+    customer: {
+      name: "Carlos Gómez",
+      email: "carlos.gomez@outlook.com",
+      phone: "+54 9 341 666-9999",
+      address: "Bv. Oroño 1200, Rosario",
+    },
+    status: "DELIVERED",
+    paymentMethod: "Tarjeta de Crédito",
+    paymentStatus: "Aprobado",
+    deliveryCost: 0,
+    deliveryZone: "Rosario Centro",
+    dateTimeSlot: "Ayer, 10:00 - 12:00 hs",
+    products: [
+      { name: "Buzo Oversized Black", quantity: 1, variant: "Talle L / Algodón Rústico", price: 5400, notes: "Entregar en portería si no respondo" }
+    ],
+    total: 5400,
+  }
+];
+
 export default function AdminDashboardPage() {
+  const [selectedKanbanOrder, setSelectedKanbanOrder] = useState<any>(null);
   const params = useParams();
   const router = useRouter();
   const tenantSlug = params.tenantSlug as string;
@@ -727,7 +794,10 @@ export default function AdminDashboardPage() {
                     <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-bold">Mock</span>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900 flex flex-col gap-2.5">
+                    <div 
+                      onClick={() => setSelectedKanbanOrder(MOCK_KANBAN_ORDERS[0])}
+                      className="bg-zinc-950 p-4 rounded-xl border border-zinc-900 flex flex-col gap-2.5 cursor-pointer hover:border-amber-500/50 hover:bg-zinc-900/10 transition-all"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-zinc-400">#ORD-9481</span>
                         <span className="text-amber-500 font-extrabold text-xs">$3,750</span>
@@ -737,7 +807,10 @@ export default function AdminDashboardPage() {
                         <p className="text-[10px] text-zinc-500 mt-1">2x Vianda Keto, 1x Ensalada</p>
                       </div>
                       <button 
-                        onClick={() => alert("Pedido movido a Preparación.")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alert("Pedido movido a Preparación.");
+                        }}
                         className="w-full bg-amber-500 text-zinc-950 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all hover:bg-amber-600"
                       >
                         Preparar →
@@ -749,11 +822,14 @@ export default function AdminDashboardPage() {
                 {/* Column 2: PREPARING */}
                 <div className="glass-panel p-4 rounded-2xl border border-zinc-900 bg-zinc-900/5 flex flex-col gap-3 min-h-[500px]">
                   <div className="flex items-center justify-between border-b border-zinc-950 pb-2.5">
-                    <span className="text-xs font-black text-purple-400 uppercase tracking-wider">En Cocina</span>
+                    <span className="text-xs font-black text-purple-400 uppercase tracking-wider">{hasType === "ROPA" ? "En Preparación" : "En Cocina"}</span>
                     <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full font-bold">1</span>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900 flex flex-col gap-2.5">
+                    <div 
+                      onClick={() => setSelectedKanbanOrder(MOCK_KANBAN_ORDERS[1])}
+                      className="bg-zinc-950 p-4 rounded-xl border border-zinc-900 flex flex-col gap-2.5 cursor-pointer hover:border-purple-500/50 hover:bg-zinc-900/10 transition-all"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-zinc-400">#ORD-9479</span>
                         <span className="text-amber-500 font-extrabold text-xs">$2,800</span>
@@ -763,7 +839,10 @@ export default function AdminDashboardPage() {
                         <p className="text-[10px] text-zinc-500 mt-1">1x Tarta de Frutillas Royale</p>
                       </div>
                       <button 
-                        onClick={() => alert("Pedido marcado como Entregado.")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alert("Pedido marcado como Entregado.");
+                        }}
                         className="w-full bg-emerald-500 text-zinc-950 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all hover:bg-emerald-600"
                       >
                         Entregar →
@@ -779,10 +858,13 @@ export default function AdminDashboardPage() {
                     <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold">✓</span>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <div className="bg-zinc-950/40 p-4 rounded-xl border border-zinc-900/60 flex flex-col gap-2.5 opacity-60">
+                    <div 
+                      onClick={() => setSelectedKanbanOrder(MOCK_KANBAN_ORDERS[2])}
+                      className="bg-zinc-950/40 p-4 rounded-xl border border-zinc-900/60 flex flex-col gap-2.5 opacity-80 cursor-pointer hover:border-emerald-500/50 hover:bg-zinc-900/10 transition-all"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-zinc-500">#ORD-9470</span>
-                        <span className="text-zinc-500 font-bold text-xs">$5,400</span>
+                        <span className="text-zinc-300 font-bold text-xs">$5,400</span>
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-zinc-400">Carlos Gómez</h4>
@@ -2683,6 +2765,160 @@ export default function AdminDashboardPage() {
                 </PremiumButton>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* KANBAN ORDER DETAILS MODAL */}
+      {selectedKanbanOrder && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl p-6 md:p-8 flex flex-col gap-6 shadow-2xl relative my-8">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-zinc-800 pb-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl font-black text-white">#{selectedKanbanOrder.id}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    selectedKanbanOrder.status === "PENDING"
+                      ? "bg-amber-500/10 border border-amber-500/20 text-amber-500"
+                      : selectedKanbanOrder.status === "PREPARING"
+                      ? "bg-purple-500/10 border border-purple-500/20 text-purple-400"
+                      : selectedKanbanOrder.status === "DELIVERED"
+                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-500"
+                      : "bg-zinc-800 text-zinc-400"
+                  }`}>
+                    {selectedKanbanOrder.status === "PENDING" ? "Pendiente" : selectedKanbanOrder.status === "PREPARING" ? "Preparando" : "Entregado"}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500">Detalles de la orden de compra del cliente</p>
+              </div>
+              <button 
+                onClick={() => setSelectedKanbanOrder(null)}
+                className="p-2 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid Layout for details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Customer Info */}
+              <div className="flex flex-col gap-4 bg-zinc-950/40 p-5 rounded-2xl border border-zinc-800/60">
+                <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-amber-500" /> Datos del Cliente
+                </h4>
+                <div className="flex flex-col gap-2.5 text-xs text-zinc-400">
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Nombre Completo</span>
+                    <span className="text-white font-semibold">{selectedKanbanOrder.customer.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Correo Electrónico</span>
+                    <span className="text-white font-medium flex items-center gap-1.5 mt-0.5">
+                      <Mail className="w-3 h-3 text-zinc-500" /> {selectedKanbanOrder.customer.email}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Teléfono / WhatsApp</span>
+                    <span className="text-white font-medium flex items-center gap-1.5 mt-0.5">
+                      <Phone className="w-3 h-3 text-zinc-500" /> {selectedKanbanOrder.customer.phone}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Dirección de Entrega</span>
+                    <span className="text-white font-medium flex items-center gap-1.5 mt-0.5">
+                      <MapPin className="w-3 h-3 text-zinc-500 shrink-0" /> {selectedKanbanOrder.customer.address}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order & Delivery Info */}
+              <div className="flex flex-col gap-4 bg-zinc-950/40 p-5 rounded-2xl border border-zinc-800/60">
+                <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                  <Activity className="w-3.5 h-3.5 text-amber-500" /> Entrega & Pago
+                </h4>
+                <div className="flex flex-col gap-2.5 text-xs text-zinc-400">
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Método de Pago</span>
+                    <span className="text-white font-semibold flex items-center gap-1.5 mt-0.5">
+                      <CreditCard className="w-3.5 h-3.5 text-zinc-500" /> {selectedKanbanOrder.paymentMethod}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Estado del Pago</span>
+                    <span className={`inline-block font-extrabold text-[10px] uppercase px-2 py-0.5 rounded mt-1 ${
+                      selectedKanbanOrder.paymentStatus === "Aprobado"
+                        ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-500"
+                        : "bg-amber-500/10 border border-amber-500/20 text-amber-500"
+                    }`}>
+                      {selectedKanbanOrder.paymentStatus}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Horario de Entrega</span>
+                    <span className="text-white font-semibold flex items-center gap-1.5 mt-0.5">
+                      <Clock className="w-3.5 h-3.5 text-zinc-500" /> {selectedKanbanOrder.dateTimeSlot}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase block">Zona / Costo de Envío</span>
+                    <span className="text-white font-medium">
+                      {selectedKanbanOrder.deliveryZone} ({selectedKanbanOrder.deliveryCost > 0 ? `$${selectedKanbanOrder.deliveryCost}` : "Gratis"})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Products Table */}
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Productos Pedidos</h4>
+              <div className="border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950/20">
+                <div className="grid grid-cols-12 bg-zinc-950 p-3 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                  <div className="col-span-6">Producto</div>
+                  <div className="col-span-2 text-center">Cant.</div>
+                  <div className="col-span-2 text-right">Precio Unit.</div>
+                  <div className="col-span-2 text-right">Subtotal</div>
+                </div>
+                <div className="divide-y divide-zinc-800/60">
+                  {selectedKanbanOrder.products.map((p: any, idx: number) => (
+                    <div key={idx} className="grid grid-cols-12 p-3.5 text-xs items-center hover:bg-zinc-900/10">
+                      <div className="col-span-6 flex flex-col gap-0.5">
+                        <span className="text-white font-semibold">{p.name}</span>
+                        {p.variant && <span className="text-[10px] text-zinc-500">Var: {p.variant}</span>}
+                        {p.notes && <span className="text-[10px] text-amber-500/80 italic">Nota: "{p.notes}"</span>}
+                      </div>
+                      <div className="col-span-2 text-center text-zinc-300 font-bold">{p.quantity}x</div>
+                      <div className="col-span-2 text-right text-zinc-400">${p.price}</div>
+                      <div className="col-span-2 text-right text-white font-bold">${p.price * p.quantity}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Total Block */}
+            <div className="flex items-center justify-between border-t border-zinc-800 pt-5 mt-2 bg-zinc-950/20 -mx-6 md:-mx-8 px-6 md:px-8 pb-1 rounded-b-3xl">
+              <div>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Costo Envío</span>
+                <p className="text-xs text-zinc-400">${selectedKanbanOrder.deliveryCost}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Total a Pagar</span>
+                <p className="text-2xl font-black text-amber-500">${selectedKanbanOrder.total}</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setSelectedKanbanOrder(null)}
+                className="bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-300 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors"
+              >
+                Cerrar Detalles
+              </button>
+            </div>
           </div>
         </div>
       )}
