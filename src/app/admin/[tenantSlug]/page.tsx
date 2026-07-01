@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
-import { getProductsByTenant, createProduct, updateProduct, deleteProduct } from "@/app/actions/product";
+import { getProductsByTenant, createProduct, updateProduct, deleteProduct, adjustProductStock } from "@/app/actions/product";
 import { getWeeklyMenuByStartDate, saveWeeklyMenu } from "@/app/actions/weeklyMenu";
 import { getSizeCharts, createSizeChart, deleteSizeChart, addSizeChartRow, updateSizeChartRow, deleteSizeChartRow, getClothingBrands, createClothingBrand, deleteClothingBrand, getClothingTypes, createClothingType, deleteClothingType, type SizeChartWithRows, type ClothingBrandItem, type ClothingTypeItem } from "@/app/actions/sizeChart";
 import { getHolidayForDate } from "@/lib/holidays";
@@ -42,6 +42,7 @@ import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettin
 import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy, Search, HelpCircle, BookOpen, ChevronDown } from "lucide-react";
 import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 import CatalogManagement from "@/components/admin/CatalogManagement";
+import StockManagement from "@/components/admin/StockManagement";
 
 
 const MOCK_KANBAN_ORDERS = [
@@ -112,6 +113,36 @@ export default function AdminDashboardPage() {
   const [selectedKanbanOrder, setSelectedKanbanOrder] = useState<any>(null);
   const [kanbanOrders, setKanbanOrders] = useState(MOCK_KANBAN_ORDERS);
   const [draggingOrderId, setDraggingOrderId] = useState<string | null>(null);
+
+  const updateKanbanOrderStatus = async (orderId: string, newStatus: string) => {
+    const order = kanbanOrders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const oldStatus = order.status;
+    if (oldStatus === newStatus) return;
+
+    // Transitioning TO delivered (sales closed) -> deduct physical stock
+    if (newStatus === "DELIVERED" && oldStatus !== "DELIVERED") {
+      for (const op of order.products) {
+        const prod = products.find((p) => p.name.toLowerCase() === op.name.toLowerCase());
+        if (prod) {
+          await adjustProductStock(prod.id, -op.quantity);
+        }
+      }
+    }
+    // Transitioning FROM delivered back to active -> return physical stock
+    else if (oldStatus === "DELIVERED" && newStatus !== "DELIVERED") {
+      for (const op of order.products) {
+        const prod = products.find((p) => p.name.toLowerCase() === op.name.toLowerCase());
+        if (prod) {
+          await adjustProductStock(prod.id, op.quantity);
+        }
+      }
+    }
+
+    setKanbanOrders(prev => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+    fetchData(); // Refresh products in admin dashboard
+  };
   const [hoveredColumnStatus, setHoveredColumnStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewFilter, setViewFilter] = useState<"24H" | "ALL">("24H");
@@ -162,10 +193,7 @@ export default function AdminDashboardPage() {
   const [prodSweetness, setProdSweetness] = useState("");
   const [prodPortions, setProdPortions] = useState(1);
 
-  // Manual stock movement states
-  const [stockMovementProdId, setStockMovementProdId] = useState("");
-  const [stockMovementQty, setStockMovementQty] = useState(0);
-  const [stockMovementReason, setStockMovementReason] = useState("Ingreso de mercadería");
+
 
   // Category management state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -319,9 +347,6 @@ export default function AdminDashboardPage() {
     const productsRes = await getProductsByTenant(tenantRes.data.id);
     if (productsRes.success && productsRes.data) {
       setProducts(productsRes.data);
-      if (productsRes.data.length > 0) {
-        setStockMovementProdId(productsRes.data[0].id);
-      }
     }
 
     const statsRes = await getDashboardStats(tenantRes.data.id);
@@ -352,27 +377,7 @@ export default function AdminDashboardPage() {
     fetchData();
   }, [tenantSlug]);
 
-  const handleApplyStockMovement = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stockMovementProdId || stockMovementQty === 0) return;
 
-    const prod = products.find((p) => p.id === stockMovementProdId);
-    if (!prod) return;
-
-    const res = await updateProduct(stockMovementProdId, {
-      tenantId: tenant.id,
-      categoryId: prod.categoryId,
-      price: prod.price,
-      name: prod.name,
-      stock: prod.stock + stockMovementQty,
-    });
-
-    if (res.success) {
-      alert("Movimiento de stock registrado correctamente.");
-      setStockMovementQty(0);
-      fetchData();
-    }
-  };
 
   const handleCalculateCashDifference = (e: React.FormEvent) => {
     e.preventDefault();
@@ -774,7 +779,7 @@ export default function AdminDashboardPage() {
                         e.preventDefault();
                         const orderId = e.dataTransfer.getData("text/plain") || draggingOrderId;
                         if (orderId) {
-                          setKanbanOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: col.status } : o));
+                          updateKanbanOrderStatus(orderId, col.status);
                         }
                         setDraggingOrderId(null);
                         setHoveredColumnStatus(null);
@@ -836,7 +841,7 @@ export default function AdminDashboardPage() {
                                     current = current.parentElement;
                                   }
                                   if (targetColumnStatus) {
-                                    setKanbanOrders(prev => prev.map(o => o.id === draggingOrderId ? { ...o, status: targetColumnStatus } : o));
+                                    updateKanbanOrderStatus(draggingOrderId, targetColumnStatus);
                                   }
                                   setDraggingOrderId(null);
                                   setHoveredColumnStatus(null);
@@ -862,7 +867,7 @@ export default function AdminDashboardPage() {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setKanbanOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: col.actionButton.nextStatus } : o));
+                                      updateKanbanOrderStatus(order.id, col.actionButton.nextStatus);
                                     }}
                                     className={`w-full ${col.actionButton.bg} text-zinc-950 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${col.actionButton.hoverBg}`}
                                   >
@@ -918,79 +923,13 @@ export default function AdminDashboardPage() {
 
           {/* TAB 3: STOCK MANAGEMENT */}
           {activeTab === "stock" && (
-            <div className="flex flex-col gap-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Control de Inventario</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">Registra ingresos o egresos de mercadería manualmente.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Form to change stock */}
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 md:col-span-1 flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Nuevo Movimiento</h3>
-                  <form onSubmit={handleApplyStockMovement} className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Producto</label>
-                      <select 
-                        value={stockMovementProdId}
-                        onChange={(e) => setStockMovementProdId(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                      >
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Cantidad (Positiva/Negativa)</label>
-                      <input 
-                        type="number"
-                        placeholder="Ej. +10 o -5"
-                        value={stockMovementQty}
-                        onChange={(e) => setStockMovementQty(parseInt(e.target.value) || 0)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Motivo</label>
-                      <input 
-                        type="text"
-                        value={stockMovementReason}
-                        onChange={(e) => setStockMovementReason(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                      />
-                    </div>
-
-                    <PremiumButton type="submit" variant="primary" size="sm" className="w-full justify-center">
-                      Registrar Movimiento
-                    </PremiumButton>
-                  </form>
-                </div>
-
-                {/* Stock log (mock for MVP display) */}
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 md:col-span-2 flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Historial de Ajustes</h3>
-                  <div className="flex flex-col gap-2">
-                    <div className="border-b border-zinc-900 py-3 flex items-center justify-between text-xs">
-                      <div>
-                        <p className="text-white font-semibold">Ingreso de mercadería inicial</p>
-                        <p className="text-zinc-500 text-[10px]">Hace 2 horas</p>
-                      </div>
-                      <span className="text-emerald-500 font-bold font-mono">+10 unidades</span>
-                    </div>
-                    <div className="border-b border-zinc-900 py-3 flex items-center justify-between text-xs">
-                      <div>
-                        <p className="text-white font-semibold">Ajuste por rotura / descarte</p>
-                        <p className="text-zinc-500 text-[10px]">Hace 4 horas</p>
-                      </div>
-                      <span className="text-red-500 font-bold font-mono">-2 unidades</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StockManagement
+              tenant={tenant}
+              categories={categories}
+              products={products}
+              kanbanOrders={kanbanOrders}
+              onRefresh={fetchData}
+            />
           )}
 
           {/* TAB 4: WEEKLY MENU (VIANDAS ONLY) */}

@@ -202,3 +202,22 @@ export async function updateProductsBulk(updates: ProductBulkUpdateInput[]) {
   }
 }
 
+export async function adjustProductStock(id: string, qty: number) {
+  try {
+    const product = await db.product.update({
+      where: { id },
+      data: {
+        stock: {
+          increment: qty
+        }
+      }
+    });
+    revalidatePath("/admin/[tenantSlug]", "page");
+    return { success: true, data: product };
+  } catch (error: any) {
+    console.error("Error adjusting product stock: ", error);
+    return { success: false, error: "Error al ajustar el inventario físico del producto" };
+  }
+}
+
+
