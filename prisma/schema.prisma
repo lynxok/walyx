@@ -21,6 +21,7 @@ model Tenant {
   
   // Autenticación del dueño del negocio
   passwordHash    String?
+  plainPassword   String?
 
   // Suscripciones y límites de facturación
   planType        String           @default("BASIC") // BASIC, PRO, PREMIUM

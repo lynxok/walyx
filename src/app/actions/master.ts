@@ -23,6 +23,9 @@ export async function getAllTenants() {
         _count: {
           select: { products: true, orders: true }
         },
+        orders: {
+          select: { id: true, total: true }
+        },
         categories: {
           take: 1
         }
@@ -144,7 +147,10 @@ export async function updateTenantPasswordAdmin(tenantId: string, password: stri
 
     await db.tenant.update({
       where: { id: tenantId },
-      data: { passwordHash }
+      data: { 
+        passwordHash,
+        plainPassword: password
+      }
     });
 
     return { success: true };

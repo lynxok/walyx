@@ -191,7 +191,10 @@ export async function setTenantPassword(tenantId: string, password: string) {
   try {
     await db.tenant.update({
       where: { id: tenantId },
-      data: { passwordHash: hashPassword(password) },
+      data: { 
+        passwordHash: hashPassword(password),
+        plainPassword: password
+      },
     });
     return { success: true };
   } catch (e: any) {

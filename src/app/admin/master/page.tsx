@@ -1,12 +1,28 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, Store, Users, ShoppingBag, DollarSign, Edit, Plus, X, Check, ShieldAlert, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Loader2, Store, Users, ShoppingBag, DollarSign, Edit, Plus, X, Check, ShieldAlert, KeyRound, Eye, EyeOff, TrendingUp, BarChart3, Award } from "lucide-react";
 import { getCurrentGlobalUser } from "@/app/actions/auth";
 import { getAllTenants, getSystemStats, updateTenantPlanAndStatus, updateTenantPasswordAdmin } from "@/app/actions/master";
 import { createTenant } from "@/app/actions/tenant";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import Link from "next/link";
+
+function PasswordRevealer({ password }: { password: string }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div className="inline-flex items-center gap-1.5 bg-zinc-950/60 border border-zinc-800/80 px-2 py-0.5 rounded-lg text-[10px] text-zinc-400 font-mono">
+      <span>{revealed ? password : "••••••••"}</span>
+      <button 
+        type="button" 
+        onClick={() => setRevealed(!revealed)}
+        className="text-zinc-500 hover:text-zinc-300 transition-colors ml-0.5"
+      >
+        {revealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
 
 export default function MasterDashboard() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -36,6 +52,57 @@ export default function MasterDashboard() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [saving, setSaving] = useState(false);
+
+  // Analytics calculations
+  const storeRankings = React.useMemo(() => {
+    return tenants.map(t => {
+      const totalSales = t.orders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0) || 0;
+      const orderCount = t.orders?.length || 0;
+      const avgTicket = orderCount > 0 ? totalSales / orderCount : 0;
+      const type = t.categories?.[0]?.type || "VIANDA";
+      return {
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        totalSales,
+        orderCount,
+        avgTicket,
+        type,
+        plainPassword: t.plainPassword,
+        passwordHash: t.passwordHash,
+        planType: t.planType,
+        status: t.status,
+        maxProductsAllowed: t.maxProductsAllowed,
+        maxOrdersAllowedPerMonth: t.maxOrdersAllowedPerMonth,
+        _count: t._count
+      };
+    }).sort((a, b) => b.totalSales - a.totalSales);
+  }, [tenants]);
+
+  const totalEconomicFlow = React.useMemo(() => {
+    return storeRankings.reduce((acc, t) => acc + t.totalSales, 0);
+  }, [storeRankings]);
+
+  const rubroStats = React.useMemo(() => {
+    const counts = { ROPA: 0, VIANDA: 0, PASTELERIA: 0 };
+    storeRankings.forEach(t => {
+      const type = t.type as keyof typeof counts;
+      if (counts[type] !== undefined) {
+        counts[type]++;
+      } else {
+        counts.VIANDA++;
+      }
+    });
+    const total = storeRankings.length || 1;
+    return {
+      counts,
+      pct: {
+        ROPA: (counts.ROPA / total) * 100,
+        VIANDA: (counts.VIANDA / total) * 100,
+        PASTELERIA: (counts.PASTELERIA / total) * 100,
+      }
+    };
+  }, [storeRankings]);
 
   useEffect(() => {
     async function checkAuthAndLoad() {
@@ -261,6 +328,118 @@ export default function MasterDashboard() {
           </div>
         )}
 
+        {/* Premium Analytics Dashboard */}
+        {stats && tenants.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Card 1: Economic Summary & Rubros */}
+            <div className="lg:col-span-1 bg-zinc-900/30 border border-zinc-900 backdrop-blur-md p-6 rounded-3xl flex flex-col justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider mb-1.5">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Rendimiento Global</span>
+                </div>
+                <h3 className="text-lg font-black text-white">Flujo Económico</h3>
+                <p className="text-zinc-500 text-xs mt-0.5">Volumen transaccionado total acumulado por tiendas.</p>
+                <div className="mt-4 bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-center">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Flujo Económico Total</span>
+                  <span className="text-3xl font-black text-emerald-400 mt-1">${totalEconomicFlow.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-900/80 pt-5">
+                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider mb-3">
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Distribución por Rubro</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {/* Vianda */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-300">
+                      <span>🍱 Viandas ({rubroStats.counts.VIANDA})</span>
+                      <span>{rubroStats.pct.VIANDA.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+                      <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500" style={{ width: `${rubroStats.pct.VIANDA}%` }} />
+                    </div>
+                  </div>
+                  {/* Ropa */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-300">
+                      <span>👕 Ropa ({rubroStats.counts.ROPA})</span>
+                      <span>{rubroStats.pct.ROPA.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+                      <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" style={{ width: `${rubroStats.pct.ROPA}%` }} />
+                    </div>
+                  </div>
+                  {/* Pasteleria */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-xs font-bold text-zinc-300">
+                      <span>🍰 Pastelería ({rubroStats.counts.PASTELERIA})</span>
+                      <span>{rubroStats.pct.PASTELERIA.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+                      <div className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all duration-500" style={{ width: `${rubroStats.pct.PASTELERIA}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Sales Rankings */}
+            <div className="lg:col-span-2 bg-zinc-900/30 border border-zinc-900 backdrop-blur-md p-6 rounded-3xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
+                    <Award className="w-4 h-4" />
+                    <span>Líderes de Venta</span>
+                  </div>
+                  <h3 className="text-lg font-black text-white mt-1">Ranking de Comercios</h3>
+                </div>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase bg-zinc-950/60 border border-zinc-800 px-2 py-1 rounded-lg">Por Volumen</span>
+              </div>
+
+              <div className="flex flex-col gap-2 overflow-y-auto max-h-[260px] pr-2 scrollbar-thin scrollbar-thumb-zinc-800">
+                {storeRankings.length === 0 ? (
+                  <p className="text-zinc-500 text-xs py-8 text-center">No hay datos de ventas disponibles.</p>
+                ) : (
+                  storeRankings.map((t, idx) => (
+                    <div key={t.id} className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-900 rounded-2xl hover:border-zinc-800/80 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
+                          idx === 0 ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                          idx === 1 ? "bg-zinc-300/10 text-zinc-300 border border-zinc-300/20" :
+                          idx === 2 ? "bg-amber-700/10 text-amber-700 border border-amber-700/20" :
+                          "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs text-white flex items-center gap-1.5">
+                            {t.name}
+                            <span className="text-[9px] text-zinc-500 font-normal">({t.slug})</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5 flex gap-2">
+                            <span>📦 {t.orderCount} pedidos</span>
+                            <span>•</span>
+                            <span>🎫 Avg ticket: ${t.avgTicket.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-black text-emerald-400">${t.totalSales.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</span>
+                        <p className="text-[9px] text-zinc-600 font-bold uppercase mt-0.5">
+                          {t.type === "VIANDA" ? "🍱 VIANDA" : t.type === "ROPA" ? "👕 ROPA" : "🍰 PASTELERÍA"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tenant Directory Table / List */}
         <div className="bg-zinc-900/30 border border-zinc-900 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl">
           <div className="px-6 py-5 border-b border-zinc-900/60 flex items-center justify-between">
@@ -276,7 +455,7 @@ export default function MasterDashboard() {
                   <th className="px-6 py-4">Slug</th>
                   <th className="px-6 py-4">Suscripción</th>
                   <th className="px-6 py-4">Límites</th>
-                  <th className="px-6 py-4">Estadísticas</th>
+                  <th className="px-6 py-4">Estadísticas y Clave</th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -291,12 +470,14 @@ export default function MasterDashboard() {
                   tenants.map((t) => (
                     <tr key={t.id} className="hover:bg-zinc-900/10 transition-colors">
                       <td className="px-6 py-4 font-bold text-white">
-                        {t.name}
-                        {!t.passwordHash && (
-                          <span className="ml-2 inline-flex text-[9px] font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20">
-                            Sin Clave
-                          </span>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          <span>{t.name}</span>
+                          {!t.passwordHash && (
+                            <span className="inline-flex self-start text-[9px] font-bold bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20">
+                              Sin Clave Configurada
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-zinc-400 font-mono">
                         {t.slug}
@@ -326,7 +507,17 @@ export default function MasterDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-zinc-400 font-bold">
-                        📋 {t._count.orders} pedidos procesados
+                        <div className="flex flex-col gap-1.5">
+                          <span>📋 {t._count.orders} pedidos procesados</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-500 font-normal">Clave:</span>
+                            {t.plainPassword ? (
+                              <PasswordRevealer password={t.plainPassword} />
+                            ) : (
+                              <span className="text-[10px] text-zinc-600 font-normal italic">No disponible</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="inline-flex gap-2">
