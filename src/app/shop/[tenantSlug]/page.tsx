@@ -17,7 +17,8 @@ import {
   Sparkles,
   LogIn,
   LogOut,
-  User
+  User,
+  Ruler
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
@@ -29,6 +30,7 @@ import { PremiumButton } from "@/components/ui/PremiumButton";
 import { ProductCard, ProductData, ProductType } from "@/components/ui/ProductCard";
 import { createGroupGift } from "@/app/actions/groupGift";
 import { saveCartSession, getAbandonedCarts } from "@/app/actions/cartRecovery";
+import { getSizeCharts } from "@/app/actions/sizeChart";
 
 // Mock delivery zones matching dynamic styles
 const DEFAULT_ZONES = [
@@ -58,6 +60,9 @@ export default function ShopPublicPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [globalUser, setGlobalUser] = useState<any>(null);
+  const [sizeCharts, setSizeCharts] = useState<any[]>([]);
+  const [activeSizeChartModal, setActiveSizeChartModal] = useState<any | null>(null);
+  const [sizeChartUnit, setSizeChartUnit] = useState<"cm" | "in">("cm");
 
   // Theme states
   const [logoUrl, setLogoUrl] = useState("");
@@ -206,6 +211,21 @@ export default function ShopPublicPage() {
         });
         setWeeklyPlanner(initialPlanner);
       }
+    }
+
+    // Load size charts for clothing stores
+    if (tenantData.categories?.[0]?.type === "ROPA") {
+      const charts = await getSizeCharts(tenantData.id);
+      // Enrich charts with category sizeChartId mapping
+      const categoriesWithCharts = (tenantData.categories || []).filter((c: any) => c.sizeChartId);
+      const enriched = charts.map((chart: any) => ({
+        ...chart,
+        // find which categories reference this chart
+        categoryIds: categoriesWithCharts
+          .filter((c: any) => c.sizeChartId === chart.id)
+          .map((c: any) => c.id)
+      }));
+      setSizeCharts(enriched);
     }
 
     setLoading(false);
@@ -886,6 +906,28 @@ export default function ShopPublicPage() {
             </div>
 
             {/* Product Card Layout (Grid or List based on theme settings) */}
+            {/* Guía de Talles contextual button for clothing stores */}
+            {sizeCharts.length > 0 && (() => {
+              // Find the chart for the current selected category (if any)
+              const currentCat = categories.find((c: any) => c.id === selectedCategory);
+              const relevantChart = sizeCharts.find((sc: any) => {
+                if (selectedCategory === "TODAS") return true; // show first one generically
+                return currentCat && sc.categoryIds?.includes(currentCat.id);
+              });
+              if (!relevantChart) return null;
+              return (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setActiveSizeChartModal(relevantChart)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 rounded-xl transition-all cursor-pointer"
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    📐 Guía de Talles
+                  </button>
+                </div>
+              );
+            })()}
+
             {layoutMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.length === 0 ? (
@@ -1158,6 +1200,92 @@ export default function ShopPublicPage() {
                 {vacaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Crear Colecta y Obtener Link"}
               </PremiumButton>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ── SIZE CHART MODAL (Guía de Talles) ─────────────────────────────────── */}
+      {activeSizeChartModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+          <div className="bg-zinc-900/90 backdrop-blur-xl border border-zinc-800/60 w-full max-w-lg rounded-3xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto shadow-2xl">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <Ruler className="w-5 h-5 text-amber-500" /> Guía de Talles
+                </h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {activeSizeChartModal.brandName} — {activeSizeChartModal.clothingTypeName}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* CM / Inches Toggle */}
+                <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-xl p-1 text-[10px]">
+                  <button
+                    onClick={() => setSizeChartUnit("cm")}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${sizeChartUnit === "cm" ? "bg-amber-500 text-black" : "text-zinc-400"}`}
+                  >
+                    CM
+                  </button>
+                  <button
+                    onClick={() => setSizeChartUnit("in")}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${sizeChartUnit === "in" ? "bg-amber-500 text-black" : "text-zinc-400"}`}
+                  >
+                    Pulgadas
+                  </button>
+                </div>
+                <button
+                  onClick={() => { setActiveSizeChartModal(null); setSizeChartUnit("cm"); }}
+                  className="p-1.5 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Size Table */}
+            <div className="overflow-x-auto relative">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="text-zinc-500 font-bold uppercase tracking-wider border-b border-zinc-800">
+                    {activeSizeChartModal.columns.map((col: string, idx: number) => (
+                      <th key={idx} className="py-2 px-3 whitespace-nowrap">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeSizeChartModal.rows.map((row: { id: string; values: string[]; order: number }) => (
+                    <tr key={row.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
+                      {row.values.map((val: string, cIdx: number) => {
+                        // Only convert numeric / range values (not the size label in col 0)
+                        let display = val;
+                        if (sizeChartUnit === "in" && cIdx > 0) {
+                          // Convert ranges like "90-95" or single "68"
+                          display = val.replace(/(\d+(?:\.\d+)?)/g, (num) => {
+                            const inches = parseFloat(num) / 2.54;
+                            return isNaN(inches) ? num : inches.toFixed(1);
+                          });
+                        }
+                        return (
+                          <td key={cIdx} className="py-2.5 px-3 font-mono text-zinc-200 font-semibold whitespace-nowrap">
+                            {display}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {/* Mobile horizontal scroll indicator */}
+              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-zinc-900/60 to-transparent pointer-events-none" />
+            </div>
+
+            {sizeChartUnit === "in" && (
+              <p className="text-[9px] text-zinc-600 text-center">
+                * Valores convertidos automáticamente de cm a pulgadas (÷ 2.54)
+              </p>
+            )}
+
           </div>
         </div>
       )}

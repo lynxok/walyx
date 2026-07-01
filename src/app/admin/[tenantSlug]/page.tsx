@@ -43,6 +43,7 @@ import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy, Se
 import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 import CatalogManagement from "@/components/admin/CatalogManagement";
 import StockManagement from "@/components/admin/StockManagement";
+import SizeChartManagement from "@/components/admin/SizeChartManagement";
 
 
 const MOCK_KANBAN_ORDERS = [
@@ -917,6 +918,7 @@ export default function AdminDashboardPage() {
               tenant={tenant}
               categories={categories}
               products={products}
+              sizeCharts={sizeCharts}
               onRefresh={fetchData}
             />
           )}
@@ -1120,6 +1122,17 @@ export default function AdminDashboardPage() {
 
           {/* TAB: TABLAS DE TALLES - only for ROPA */}
           {activeTab === "talles" && hasType === "ROPA" && (
+            <SizeChartManagement
+              tenant={tenant}
+              sizeCharts={sizeCharts}
+              clothingBrands={clothingBrands}
+              clothingTypes={clothingTypes}
+              onRefresh={fetchData}
+            />
+          )}
+
+          {/* LEGACY TALLES PLACEHOLDER */}
+          {false && (
             <div className="flex flex-col gap-6">
 
               {/* ── Header with panel toggle ─────────────────────────────── */}

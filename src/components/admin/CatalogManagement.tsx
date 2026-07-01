@@ -23,7 +23,7 @@ import {
   updateCategory, 
   deleteCategory 
 } from "@/app/actions/category";
-import { getSizeCharts, type SizeChartWithRows } from "@/app/actions/sizeChart";
+import type { SizeChartWithRows } from "@/app/actions/sizeChart";
 
 interface Tenant {
   id: string;
@@ -38,6 +38,7 @@ interface Category {
   slug: string;
   type: string;
   price?: number | null;
+  sizeChartId?: string | null;
 }
 
 interface Product {
@@ -65,6 +66,7 @@ interface CatalogManagementProps {
   tenant: Tenant;
   categories: Category[];
   products: Product[];
+  sizeCharts: any[];
   onRefresh: () => void;
 }
 
@@ -72,6 +74,7 @@ export default function CatalogManagement({
   tenant,
   categories,
   products,
+  sizeCharts,
   onRefresh
 }: CatalogManagementProps) {
   const hasType = categories.length > 0 ? categories[0].type : "VIANDA";
@@ -84,13 +87,6 @@ export default function CatalogManagement({
   // View Mode: 'grid' for standard card list, 'bulk' for Stock/Price Bulk Editor
   const [viewMode, setViewMode] = useState<"grid" | "bulk">("grid");
 
-  // Size charts for ROPA reference
-  const [sizeCharts, setSizeCharts] = useState<SizeChartWithRows[]>([]);
-  useEffect(() => {
-    if (hasType === "ROPA") {
-      getSizeCharts(tenant.id).then((charts) => setSizeCharts(charts));
-    }
-  }, [tenant.id, hasType]);
 
   // Bulk Edit State
   // Keep track of modified products: { [productId]: { price, stock, isActive } }
@@ -130,6 +126,7 @@ export default function CatalogManagement({
   const [catName, setCatName] = useState("");
   const [catPrice, setCatPrice] = useState<number>(0);
   const [categoryError, setCategoryError] = useState("");
+  const [catSizeChartId, setCatSizeChartId] = useState("");
 
   // Filtering products
   const filteredProducts = useMemo(() => {
@@ -255,6 +252,7 @@ export default function CatalogManagement({
     setEditingCategory(null);
     setCatName("");
     setCatPrice(0);
+    setCatSizeChartId("");
     setCategoryError("");
     setShowCategoryModal(true);
   };
@@ -263,6 +261,7 @@ export default function CatalogManagement({
     setEditingCategory(cat);
     setCatName(cat.name);
     setCatPrice(cat.price || 0);
+    setCatSizeChartId(cat.sizeChartId || "");
     setCategoryError("");
     setShowCategoryModal(true);
   };
@@ -285,6 +284,7 @@ export default function CatalogManagement({
         slug: catSlug,
         type: hasType,
         price: hasType === "VIANDA" ? catPrice : undefined,
+        sizeChartId: hasType === "ROPA" ? (catSizeChartId || null) : null,
       });
     } else {
       res = await createCategory({
@@ -293,6 +293,7 @@ export default function CatalogManagement({
         type: hasType,
         price: hasType === "VIANDA" ? catPrice : undefined,
         tenantId: tenant.id,
+        sizeChartId: hasType === "ROPA" ? (catSizeChartId || null) : null,
       });
     }
 
@@ -949,6 +950,25 @@ export default function CatalogManagement({
                     className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors font-bold text-amber-500"
                   />
                   <p className="text-[10px] text-zinc-500">Todas las viandas asignadas a esta categoría tomarán este precio automáticamente.</p>
+                </div>
+              )}
+
+              {hasType === "ROPA" && sizeCharts.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Guía de Talles Asociada</label>
+                  <select
+                    value={catSizeChartId}
+                    onChange={(e) => setCatSizeChartId(e.target.value)}
+                    className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none focus:border-amber-500 transition-colors"
+                  >
+                    <option value="">Sin guía de talles</option>
+                    {sizeCharts.map((sc: any) => (
+                      <option key={sc.id} value={sc.id}>
+                        {sc.brandName} — {sc.clothingTypeName} ({sc.columns.length} columnas, {sc.rows.length} talles)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-zinc-500">Los clientes verán el botón "Guía de talles" en la tienda al ver productos de esta categoría.</p>
                 </div>
               )}
 

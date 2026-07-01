@@ -10,6 +10,7 @@ export type CreateCategoryInput = {
   type: string; // ROPA, VIANDA, PASTELERIA
   price?: number;
   tenantId: string;
+  sizeChartId?: string | null;
 };
 
 export async function getCategoriesByTenant(tenantId: string) {
@@ -17,6 +18,14 @@ export async function getCategoriesByTenant(tenantId: string) {
     const categories = await db.category.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
+      include: {
+        sizeChart: {
+          include: {
+            brand: true,
+            clothingType: true
+          }
+        }
+      }
     });
     return { success: true, data: categories };
   } catch (error: any) {
@@ -47,9 +56,11 @@ export async function createCategory(input: CreateCategoryInput) {
         type: input.type,
         price: input.price !== undefined ? input.price : null,
         tenantId: input.tenantId,
+        sizeChartId: input.sizeChartId || null,
       },
     });
 
+    revalidatePath("/admin/[tenantSlug]", "page");
     return { success: true, data: category };
   } catch (error: any) {
     console.error("Error creating category: ", error);
@@ -59,7 +70,14 @@ export async function createCategory(input: CreateCategoryInput) {
 
 export async function updateCategory(
   id: string,
-  input: { name: string; slug: string; description?: string; type: string; price?: number }
+  input: { 
+    name: string; 
+    slug: string; 
+    description?: string; 
+    type: string; 
+    price?: number; 
+    sizeChartId?: string | null;
+  }
 ) {
   try {
     const category = await db.category.update({
@@ -70,6 +88,7 @@ export async function updateCategory(
         description: input.description,
         type: input.type,
         price: input.price !== undefined ? input.price : null,
+        sizeChartId: input.sizeChartId !== undefined ? input.sizeChartId : undefined,
       },
     });
 
@@ -81,6 +100,7 @@ export async function updateCategory(
       });
     }
 
+    revalidatePath("/admin/[tenantSlug]", "page");
     return { success: true, data: category };
   } catch (error: any) {
     console.error("Error updating category: ", error);
@@ -93,6 +113,7 @@ export async function deleteCategory(id: string) {
     const category = await db.category.delete({
       where: { id },
     });
+    revalidatePath("/admin/[tenantSlug]", "page");
     return { success: true, data: category };
   } catch (error: any) {
     console.error("Error deleting category: ", error);
