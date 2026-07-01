@@ -43,4 +43,16 @@ Este archivo registra las decisiones técnicas de arquitectura, base de datos, d
   * **Limpieza de Importaciones:** Se removieron los componentes importados pero sin uso (como `Sparkles`, `Layers`, `X`, etc.) de Lucide.
 * **Verificación:** Linter de ESLint reporta **0 errores** en los archivos tratados. Compilación limpia y exitosa con `npm run build`.
 
-
+### [2026-07-01] Gestión de Stock Tripartito e Integración con Ciclo de Kanban
+* **Archivos Modificados:**
+  * `src/app/actions/product.ts` (Implementación de Server Action `adjustProductStock`)
+  * `src/app/admin/[tenantSlug]/page.tsx` (Eliminación de estados e integración de manejadores de Kanban con base de datos)
+* **Archivo Nuevo:**
+  * `src/components/admin/StockManagement.tsx` (Componente de Inventario con popup de reservas)
+* **Implementación:**
+  * **Server Action de Inventario:** Programación de `adjustProductStock` para realizar incrementos y decrementos nativos y atómicos del inventario físico en PostgreSQL con Prisma, llamando a `revalidatePath`.
+  * **Integración del Kanban (Ciclo de Vida):** Creación del controlador asíncrono `updateKanbanOrderStatus` en `page.tsx` que intercepta las transiciones a/desde `DELIVERED` del Kanban. Si la orden se entrega, descuenta el stock físico en la base de datos de forma efectiva. Si se retrocede o cancela, restaura el stock.
+  * **Componente StockManagement:** Exposición del listado de inventario dividiendo la fila en *Stock Físico*, *Stock Reservado* (calculado en memoria al contrastar `products` y `kanbanOrders` en estados activos) y *Stock Disponible*.
+  * **Popup de Reservas:** Creación del modal interactivo `ActiveReservationsModal` que filtra y presenta los detalles del cliente, ticket, cantidad y variante que retiene las reservas.
+  * **Purity de React:** Se utilizaron inicializadores de estado diferidos (lazy initializers `() => [ ... ]`) en `useState` para el historial de ajustes, previniendo alertas de funciones impuras (`react-hooks/purity`) causadas por llamadas directas a `Date.now()`.
+* **Verificación:** ESLint reporta **0 errores y 0 warnings** en el nuevo componente. Compilación exitosa de Next.js (`npm run build`).
