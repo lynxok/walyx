@@ -32,3 +32,15 @@ Este archivo registra las decisiones técnicas de arquitectura, base de datos, d
   * **Quick-Edit Grid:** Sub-pestaña que expone una grilla con inputs numéricos para modificar precio y stock en lote, guardando los cambios asincrónicamente mediante `updateProductsBulk` y refrescando el dashboard.
 * **Verificación:** Compilación exitosa de Next.js (`npm run build`) en Turbopack con 0 advertencias de tipado.
 
+### [2026-07-01] Limpieza de Linter y Tipado Estricto
+* **Archivos Modificados:**
+  * `src/components/admin/CatalogManagement.tsx`
+  * `src/components/ui/FloatingCart.tsx`
+  * `src/components/ui/ProductCard.tsx`
+* **Implementación:**
+  * **Remoción de useEffect Hooks Conflictivos:** Se eliminaron los hooks de sincronización de estados reactivos en `CatalogManagement.tsx` (que lanzaban alertas de renderizado en cascada). La sincronización de precios de categorías de vianda se resolvió directamente en los eventos `onChange` del formulario de carga e inicializadores del modal. El reseteo de cambios masivos se delegó a las acciones directas de botones y callbacks.
+  * **Tipado Estricto de Parámetros:** Se removió el tipo explícito `any` en los componentes modificados, reemplazándolo con interfaces personalizadas (`Product`, `Category`, `Tenant`) y el uso de `Record<string, string | number>` en props de callbacks y payloads de variante.
+  * **Limpieza de Importaciones:** Se removieron los componentes importados pero sin uso (como `Sparkles`, `Layers`, `X`, etc.) de Lucide.
+* **Verificación:** Linter de ESLint reporta **0 errores** en los archivos tratados. Compilación limpia y exitosa con `npm run build`.
+
+
