@@ -7,15 +7,9 @@ import {
   Edit, 
   Trash2, 
   Save, 
-  Check, 
-  X, 
   Grid, 
   List, 
-  Package, 
-  Layers, 
-  Sparkles,
-  Loader2,
-  CheckSquare
+  Loader2
 } from "lucide-react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { 
@@ -31,10 +25,46 @@ import {
 } from "@/app/actions/category";
 import { getSizeCharts, type SizeChartWithRows } from "@/app/actions/sizeChart";
 
+interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  price?: number | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  stock: number;
+  imageUrl?: string | null;
+  isActive: boolean;
+  categoryId: string;
+  size?: string | null;
+  color?: string | null;
+  material?: string | null;
+  calories?: number | null;
+  ingredients?: string | null;
+  isVegan: boolean;
+  isGlutenFree: boolean;
+  sweetnessLevel?: string | null;
+  portions?: number | null;
+  category?: Category | null;
+}
+
 interface CatalogManagementProps {
-  tenant: any;
-  categories: any[];
-  products: any[];
+  tenant: Tenant;
+  categories: Category[];
+  products: Product[];
   onRefresh: () => void;
 }
 
@@ -71,7 +101,7 @@ export default function CatalogManagement({
 
   // Modals state
   const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [prodName, setProdName] = useState("");
   const [prodDesc, setProdDesc] = useState("");
   const [prodPrice, setProdPrice] = useState(0);
@@ -96,25 +126,10 @@ export default function CatalogManagement({
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [catName, setCatName] = useState("");
   const [catPrice, setCatPrice] = useState<number>(0);
   const [categoryError, setCategoryError] = useState("");
-
-  // Sync product price with category price automatically when category changes (VIANDA only)
-  useEffect(() => {
-    if (hasType === "VIANDA" && prodCategoryId) {
-      const selectedCat = categories.find((c) => c.id === prodCategoryId);
-      if (selectedCat && selectedCat.price !== null && selectedCat.price !== undefined) {
-        setProdPrice(selectedCat.price);
-      }
-    }
-  }, [prodCategoryId, categories, hasType]);
-
-  // Reset bulk changes when products change or switching views
-  useEffect(() => {
-    setBulkChanges({});
-  }, [products, viewMode]);
 
   // Filtering products
   const filteredProducts = useMemo(() => {
@@ -137,10 +152,16 @@ export default function CatalogManagement({
     setEditingProduct(null);
     setProdName("");
     setProdDesc("");
-    setProdPrice(0);
+    const initialCategory = categories[0];
+    const initialCategoryId = initialCategory?.id || "";
+    setProdCategoryId(initialCategoryId);
+    if (hasType === "VIANDA" && initialCategory) {
+      setProdPrice(initialCategory.price || 0);
+    } else {
+      setProdPrice(0);
+    }
     setProdStock(0);
     setProdImageUrl("");
-    setProdCategoryId(categories[0]?.id || "");
     setProdSize("");
     setProdColor("");
     setProdMaterial("");
@@ -153,7 +174,7 @@ export default function CatalogManagement({
     setShowProductModal(true);
   };
 
-  const handleOpenEditModal = (p: any) => {
+  const handleOpenEditModal = (p: Product) => {
     setEditingProduct(p);
     setProdName(p.name);
     setProdDesc(p.description || "");
@@ -238,7 +259,7 @@ export default function CatalogManagement({
     setShowCategoryModal(true);
   };
 
-  const handleOpenEditCategoryModal = (cat: any) => {
+  const handleOpenEditCategoryModal = (cat: Category) => {
     setEditingCategory(cat);
     setCatName(cat.name);
     setCatPrice(cat.price || 0);
@@ -295,7 +316,7 @@ export default function CatalogManagement({
   };
 
   // Bulk Edit helpers
-  const handleBulkChange = (productId: string, field: "price" | "stock" | "isActive", value: any) => {
+  const handleBulkChange = (productId: string, field: "price" | "stock" | "isActive", value: number | boolean) => {
     setBulkChanges(prev => {
       const productOrig = products.find(p => p.id === productId);
       if (!productOrig) return prev;
@@ -720,7 +741,16 @@ export default function CatalogManagement({
                   <label className="text-zinc-300 text-xs font-bold uppercase tracking-wider">Categoría</label>
                   <select 
                     value={prodCategoryId}
-                    onChange={(e) => setProdCategoryId(e.target.value)}
+                    onChange={(e) => {
+                      const newCatId = e.target.value;
+                      setProdCategoryId(newCatId);
+                      if (hasType === "VIANDA") {
+                        const selectedCat = categories.find((c) => c.id === newCatId);
+                        if (selectedCat && selectedCat.price !== null && selectedCat.price !== undefined) {
+                          setProdPrice(selectedCat.price);
+                        }
+                      }
+                    }}
                     className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
                   >
                     {categories.map((c) => (

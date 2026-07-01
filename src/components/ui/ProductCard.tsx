@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles, ShoppingCart, Heart, Activity } from "lucide-react";
+import { ShoppingCart, Heart, Activity } from "lucide-react";
 import { PremiumButton } from "./PremiumButton";
 
 export type ProductType = "clothing" | "vianda" | "bakery";
@@ -24,7 +24,7 @@ export interface ProductData {
 
 interface ProductCardProps {
   product: ProductData;
-  onAddToCart: (product: ProductData, options: any) => void;
+  onAddToCart: (product: ProductData, options: Record<string, string | number>) => void;
   onGroupGift?: (product: ProductData) => void;
 }
 
@@ -125,7 +125,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   );
 
   const handleAdd = () => {
-    const options: any = {};
+    const options: Record<string, string | number> = {};
     if (product.type === "clothing") {
       options.size = selectedSize;
       options.color = selectedColor;

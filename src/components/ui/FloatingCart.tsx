@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { ShoppingCart, X, Trash2, ChevronRight, Sparkles } from "lucide-react";
+import { ShoppingCart, X, Trash2, ChevronRight } from "lucide-react";
 import { PremiumButton } from "./PremiumButton";
 import { ProductData } from "./ProductCard";
 
 interface CartItem {
   product: ProductData;
   quantity: number;
-  options?: any;
+  options?: Record<string, string>;
 }
 
 interface FloatingCartProps {
