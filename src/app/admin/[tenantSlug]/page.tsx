@@ -34,7 +34,7 @@ import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettings";
-import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy } from "lucide-react";
+import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy, Search, HelpCircle, BookOpen, ChevronDown } from "lucide-react";
 import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 
 export default function AdminDashboardPage() {
@@ -131,6 +131,11 @@ export default function AdminDashboardPage() {
 
   // Cart Recovery State
   const [abandonedCarts, setAbandonedCarts] = useState<any[]>([]);
+
+  // Help Panel interactive states
+  const [helpSearchQuery, setHelpSearchQuery] = useState("");
+  const [helpActiveSubTab, setHelpActiveSubTab] = useState("general");
+  const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
 
   // Dynamic Weekly Menu states (for Viandas)
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
@@ -584,7 +589,8 @@ export default function AdminDashboardPage() {
             { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
             { id: "recovery", label: "Recuperar Ventas", icon: <LifeBuoy className="w-4 h-4" /> },
             { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
-            { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> }
+            { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> },
+            { id: "help", label: "Ayuda & Soporte", icon: <LifeBuoy className="w-4 h-4 animate-pulse" /> }
           ].map((item) => (
             <button
               key={item.id}
@@ -2198,6 +2204,192 @@ export default function AdminDashboardPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: HELP & SUPPORT */}
+          {activeTab === "help" && (
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    Centro de Ayuda de Walyx <Sparkles className="w-5 h-5 text-amber-500" />
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Guias detalladas y documentación paso a paso para configurar tu local.
+                  </p>
+                </div>
+                
+                {/* Search Bar */}
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="text"
+                    value={helpSearchQuery}
+                    onChange={(e) => setHelpSearchQuery(e.target.value)}
+                    placeholder="Buscar un tema o función..."
+                    className="bg-zinc-950/80 border border-zinc-900 focus:border-amber-500 text-xs text-white pl-10 pr-4 py-3 rounded-xl w-full outline-none transition-all placeholder:text-zinc-650"
+                  />
+                </div>
+              </div>
+
+              {/* Sub-Tabs for Help rubros */}
+              <div className="flex flex-wrap gap-2 bg-zinc-900/10 border border-zinc-900 p-1.5 rounded-2xl">
+                {[
+                  { id: "general", label: "⚙️ Generalidades", desc: "WhatsApp, Carrito y Personalización" },
+                  { id: "ropa", label: "👗 Talles & Ropa", desc: "Modelado de variantes y medidas" },
+                  { id: "viandas", label: "🍱 Menú & Viandas", desc: "Planificación semanal y límites" },
+                  { id: "pasteleria", label: "🍰 Encargos & Pasteles", desc: "Porciones y compras colectivas" }
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => { setHelpActiveSubTab(st.id); setExpandedFaqId(null); }}
+                    className={`flex-1 min-w-[120px] text-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      helpActiveSubTab === st.id
+                        ? "bg-amber-500/15 border border-amber-500/20 text-amber-500"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* FAQ / Content Area */}
+              <div className="flex flex-col gap-4">
+                {[
+                  // GENERAL TOPICS
+                  {
+                    id: "gen-1",
+                    sub: "general",
+                    title: "📲 ¿Cómo funciona el envío automático del pedido a WhatsApp?",
+                    content: "Cuando un cliente agrega viandas o productos al carrito y presiona 'Confirmar Pedido', Walyx genera un enlace con un texto formateado. Al hacer clic, se abre WhatsApp Web o la App con todos los detalles (productos, cantidades, total con envíos, tipo de pago y dirección de entrega) listos para enviar de un solo clic."
+                  },
+                  {
+                    id: "gen-2",
+                    sub: "general",
+                    title: "🎨 ¿Cómo personalizo el diseño de mi Shop pública?",
+                    content: "Andá a la pestaña 'Personalizar Shop' en la barra lateral. Desde ahí podés subir el logo de tu negocio, una portada/banner y elegir colores, tipografías y el estilo de las tarjetas de productos (Grilla o Lista). Al guardar, los cambios se aplican al instante sin necesidad de programar."
+                  },
+                  {
+                    id: "gen-3",
+                    sub: "general",
+                    title: "🛒 ¿Qué es el recuperador de carritos abandonados?",
+                    content: "Walyx guarda automáticamente la sesión del carrito de tus clientes finales. Si abandonan la página sin presionar confirmar pedido, en la pestaña 'Recuperar Ventas' de tu panel verás el listado de carritos abandonados. Hacé clic en 'Recuperar por WhatsApp' para enviarle un recordatorio automatizado con el enlace directo para reconstruir su carrito."
+                  },
+
+                  // CLOTHING TOPICS
+                  {
+                    id: "cl-1",
+                    sub: "ropa",
+                    title: "📐 ¿Cómo creo y asocio una tabla de talles?",
+                    content: "En la pestaña 'Tablas de Talles' podés crear las columnas (ej: Pecho, Cintura, Largo) y completar los valores por cada talle (S, M, L). Luego, al editar o crear tu producto de ropa en 'Catálogo', podés seleccionar esa tabla específica. Tus clientes verán un botón de 'Guía de Talles' en tu tienda pública."
+                  },
+                  {
+                    id: "cl-2",
+                    sub: "ropa",
+                    title: "🏷️ ¿Cómo gestiono las Marcas y los Tipos de Prendas?",
+                    content: "Para mantener tu catálogo ordenado, podés registrar Marcas (ej. Marca Propia) y Tipos de Ropa (ej. Remera, Jean). Esto ayuda a que los clientes puedan filtrar tu shop eficientemente y previene errores al asignar las tablas de talles."
+                  },
+
+                  // MEALS / VIANDAS TOPICS
+                  {
+                    id: "vi-1",
+                    sub: "viandas",
+                    title: "🍱 ¿Cómo configuro mi planificador de Menú Semanal?",
+                    content: "Si tu comercio está en la categoría de Viandas, se activa la pestaña 'Menú Semanal'. Podés seleccionar qué vianda de tu catálogo se ofrece cada día (Lunes a Domingo). Esto le permite a tu cliente comprar de forma organizada el almuerzo o cena para toda la semana."
+                  },
+                  {
+                    id: "vi-2",
+                    sub: "viandas",
+                    title: "🗓️ ¿Cómo configuro días feriados o jornadas de cocina cerrada?",
+                    content: "Dentro del Menú Semanal podés marcar un día como 'Cerrado' o asignarle un nombre de feriado (ej. Navidad). Cuando activás esto, el botón de compra para ese día en particular se bloquea automáticamente en la tienda para evitar que la gente reserve cuando no estás cocinando."
+                  },
+                  {
+                    id: "vi-3",
+                    sub: "viandas",
+                    title: "🛑 ¿Cómo funcionan los límites diarios de producción?",
+                    content: "En cada día del menú semanal podés configurar el campo 'Límite'. Si definís que el Lunes cocinás como máximo 30 porciones, una vez alcanzadas por las compras de los clientes, Walyx bloqueará el plato del Lunes con la leyenda 'Agotado por hoy' y obligará al cliente a seleccionar viandas de otros días."
+                  },
+
+                  // PASTRY TOPICS
+                  {
+                    id: "pa-1",
+                    sub: "pasteleria",
+                    title: "🎂 ¿Cómo configuro porciones y nivel de dulzor en tortas?",
+                    content: "Al dar de alta un producto en el rubro Pastelería, se habilitan dos campos específicos: 'Porciones/Cortes' (para indicarle a tu cliente cuánto rinde el pastel) y 'Nivel de Dulzor' (Bajo, Medio, Alto) para que puedan encargar a gusto el producto."
+                  },
+                  {
+                    id: "pa-2",
+                    sub: "pasteleria",
+                    title: "🐄 ¿Qué es el Vaca Club (Colectas/Regalos grupales)?",
+                    content: "Permite a un cliente organizar un regalo grupal (ej. comprar una torta de cumpleaños de $15.000 entre 5 amigos). El creador genera el enlace y cada participante aporta el monto que desee de forma online. Una vez recaudado el 100% de la meta, el pedido se confirma y se despacha a WhatsApp de forma consolidada."
+                  }
+                ]
+                  .filter((faq) => faq.sub === helpActiveSubTab)
+                  .filter((faq) => 
+                    helpSearchQuery === "" ||
+                    faq.title.toLowerCase().includes(helpSearchQuery.toLowerCase()) ||
+                    faq.content.toLowerCase().includes(helpSearchQuery.toLowerCase())
+                  )
+                  .map((faq) => {
+                    const isOpen = expandedFaqId === faq.id;
+                    return (
+                      <div 
+                        key={faq.id} 
+                        className="bg-zinc-900/35 border border-zinc-900 rounded-2xl overflow-hidden transition-all duration-300"
+                      >
+                        <button
+                          onClick={() => setExpandedFaqId(isOpen ? null : faq.id)}
+                          className="w-full flex items-center justify-between p-5 text-left font-bold text-xs tracking-wide text-zinc-100 hover:bg-zinc-900/50 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <HelpCircle className="w-4.5 h-4.5 text-amber-500 shrink-0" />
+                            {faq.title}
+                          </span>
+                          <ChevronDown 
+                            className={`w-4 h-4 text-zinc-500 shrink-0 transition-transform duration-300 ${
+                              isOpen ? "rotate-180 text-amber-500" : ""
+                            }`}
+                          />
+                        </button>
+                        
+                        <div 
+                          className={`transition-all duration-350 ease-in-out overflow-hidden ${
+                            isOpen ? "max-h-[300px] border-t border-zinc-950" : "max-h-0"
+                          }`}
+                        >
+                          <div className="p-5 text-[11px] text-zinc-400 leading-relaxed bg-zinc-950/20">
+                            {faq.content}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Contact Technical Support Banner */}
+              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-gradient-to-r from-blue-900/10 to-orange-900/10 flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-500 shrink-0">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">¿Necesitas soporte técnico adicional?</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Nuestro equipo de soporte técnico está disponible para ayudarte a configurar tu tienda.</p>
+                  </div>
+                </div>
+                <a 
+                  href="https://wa.me/5491122334455?text=Hola!%20Necesito%20soporte%20para%20configurar%20mi%20tienda%20en%20Walyx" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="shrink-0"
+                >
+                  <PremiumButton variant="primary" size="md" glow>
+                    Contactar Soporte Técnico
+                  </PremiumButton>
+                </a>
               </div>
             </div>
           )}
