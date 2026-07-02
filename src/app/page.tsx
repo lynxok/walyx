@@ -101,49 +101,51 @@ export default function Home() {
         </section>
 
         {/* Features Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
-              <Zap className="w-6 h-6" />
+        <section className="w-full">
+          <AutoCarousel desktopGridColsClassName="md:grid-cols-3">
+            <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4 h-full flex-1">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                <Zap className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Nicho 100% Adaptado</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">
+                Manejo de propiedades específicas para cada industria: talles y variantes de ropa, calorías e ingredientes para viandas fit, o porciones para pastelerías.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-white">Nicho 100% Adaptado</h3>
-            <p className="text-zinc-400 text-sm leading-relaxed">
-              Manejo de propiedades específicas para cada industria: talles y variantes de ropa, calorías e ingredientes para viandas fit, o porciones para pastelerías.
-            </p>
-          </div>
-          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
-              <MessageSquare className="w-6 h-6" />
+            <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4 h-full flex-1">
+              <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Pedido Directo a WhatsApp</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">
+                El cliente navega tu catálogo, arma el carrito y, al confirmar, el sistema genera la orden y redirige a WhatsApp con el pedido perfectamente estructurado.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-white">Pedido Directo a WhatsApp</h3>
-            <p className="text-zinc-400 text-sm leading-relaxed">
-              El cliente navega tu catálogo, arma el carrito y, al confirmar, el sistema genera la orden y redirige a WhatsApp con el pedido perfectamente estructurado.
-            </p>
-          </div>
-          <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
-              <TrendingUp className="w-6 h-6" />
+            <div className="glass-card glass-card-hover p-8 rounded-2xl flex flex-col gap-4 h-full flex-1">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Cierre de Caja y ABC</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">
+                Métricas comerciales avanzadas: panel de ventas, arqueo de caja diario consolidado por método de pago y análisis de curva ABC para tus productos estrella.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-white">Cierre de Caja y ABC</h3>
-            <p className="text-zinc-400 text-sm leading-relaxed">
-              Métricas comerciales avanzadas: panel de ventas, arqueo de caja diario consolidado por método de pago y análisis de curva ABC para tus productos estrella.
-            </p>
-          </div>
+          </AutoCarousel>
         </section>
 
         {/* Unique Features Explanation (Vaca Club & Abandoned Carts) */}
         <section className="flex flex-col gap-12">
           <div className="text-center max-w-2xl mx-auto">
-            <span className="text-xs font-bold text-orange-550 tracking-widest uppercase">Características Únicas</span>
+            <span className="text-xs font-bold text-orange-500 tracking-widest uppercase">Características Únicas</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2">Herramientas que multiplican tus ventas</h2>
             <p className="text-zinc-400 mt-3 text-sm">
               Diseñamos integraciones exclusivas para resolver los problemas reales de los negocios de viandas, indumentaria y gastronomía.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <AutoCarousel desktopGridColsClassName="lg:grid-cols-2">
             {/* Vaca Club Card */}
-            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group border border-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_30px_rgba(37,99,235,0.15)] transition-all duration-300">
+            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group border border-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_30px_rgba(37,99,235,0.15)] transition-all duration-300 h-full flex-1">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-[60px]" />
               <div className="flex flex-col gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400">
@@ -164,7 +166,7 @@ export default function Home() {
             </div>
 
             {/* Abandoned Cart Recovery Card */}
-            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group border border-orange-500/10 hover:border-orange-500/30 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)] transition-all duration-300">
+            <div className="glass-card p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between group border border-orange-500/10 hover:border-orange-500/30 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)] transition-all duration-300 h-full flex-1">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-[60px]" />
               <div className="flex flex-col gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-400">
@@ -183,7 +185,7 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4" />
               </div>
             </div>
-          </div>
+          </AutoCarousel>
         </section>
 
         {/* Subscription Plans */}
