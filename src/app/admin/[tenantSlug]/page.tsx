@@ -39,6 +39,14 @@ import { getHolidayForDate } from "@/lib/holidays";
 import { getDashboardStats, DashboardStats } from "@/app/actions/dashboard";
 import { PremiumButton } from "@/components/ui/PremiumButton";
 import { updateShopSettings, type ThemeSettings } from "@/app/actions/shopSettings";
+import { 
+  getActiveCashSession, 
+  openCashSession, 
+  addCashTransaction, 
+  closeCashSession, 
+  getCashSessionHistory,
+  type CashSessionWithTransactions 
+} from "@/app/actions/cashSession";
 import { Palette, LayoutGrid, Type, Image as ImageIcon, Smartphone, LifeBuoy, Search, HelpCircle, BookOpen, ChevronDown } from "lucide-react";
 import { getAbandonedCarts, markCartAsRecovered } from "@/app/actions/cartRecovery";
 import CatalogManagement from "@/components/admin/CatalogManagement";
@@ -229,10 +237,28 @@ export default function AdminDashboardPage() {
   // Inline row edit tracker: rowId -> values[]
   const [scRowEdits, setScRowEdits]           = useState<Record<string, string[]>>({});
 
-  // Cash Register states
-  const [cashAmount, setCashAmount] = useState("0");
-  const [transferAmount, setTransferAmount] = useState("0");
-  const [expenses, setExpenses] = useState("0");
+  // Cash Register states (new shift-based)
+  const [activeSession, setActiveSession] = useState<CashSessionWithTransactions | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<any[]>([]);
+  const [openingBalanceInput, setOpeningBalanceInput] = useState("10000");
+  const [newTxAmount, setNewTxAmount] = useState("");
+  const [newTxType, setNewTxType] = useState<"PAY_IN" | "PAY_OUT">("PAY_OUT");
+  const [newTxCategory, setNewTxCategory] = useState("SUPPLIER");
+  const [newTxNotes, setNewTxNotes] = useState("");
+  const [blindClose, setBlindClose] = useState(false);
+  const [showCalculatorModal, setShowCalculatorModal] = useState(false);
+  const [cashNotesInput, setCashNotesInput] = useState("");
+  const [manualActualBalanceInput, setManualActualBalanceInput] = useState("");
+  const [calculatorDenominations, setCalculatorDenominations] = useState<Record<string, number>>({
+    "2000": 0,
+    "1000": 0,
+    "500": 0,
+    "200": 0,
+    "100": 0,
+    "50": 0,
+    "20": 0,
+    "10": 0,
+  });
   const [cashDifference, setCashDifference] = useState<number | null>(null);
   const [cashCloseSuccess, setCashCloseSuccess] = useState(false);
 
@@ -372,6 +398,20 @@ export default function AdminDashboardPage() {
     if (chartsData.length > 0) setScActiveBrandId(chartsData[0].brandId);
     else if (brandsData.length > 0) setScActiveBrandId(brandsData[0].id);
 
+    // Fetch cash session details
+    try {
+      const activeSessionRes = await getActiveCashSession(tenantRes.data.id);
+      if (activeSessionRes.success) {
+        setActiveSession(activeSessionRes.data);
+      }
+      const historyRes = await getCashSessionHistory(tenantRes.data.id);
+      if (historyRes.success) {
+        setSessionHistory(historyRes.data);
+      }
+    } catch (err) {
+      console.error("Error loading cash sessions in fetchData:", err);
+    }
+
     setLoading(false);
   };
 
@@ -379,14 +419,90 @@ export default function AdminDashboardPage() {
     fetchData();
   }, [tenantSlug]);
 
-
-
-  const handleCalculateCashDifference = (e: React.FormEvent) => {
+  const handleOpenSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    const systemTotal = stats?.dailyClose.reduce((sum: number, d: any) => sum + d.totalRevenue, 0) || 0;
-    const userTotal = parseFloat(cashAmount) + parseFloat(transferAmount) - parseFloat(expenses);
-    setCashDifference(userTotal - systemTotal);
-    setCashCloseSuccess(true);
+    if (!tenant) return;
+    const balance = parseFloat(openingBalanceInput) || 0;
+    const res = await openCashSession(tenant.id, balance, "Administrador");
+    if (res.success) {
+      // Refresh to load session
+      await fetchData();
+      setCashCloseSuccess(false);
+      setCashDifference(null);
+    } else {
+      alert(res.error || "Error al abrir la caja");
+    }
+  };
+
+  const handleRegisterTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSession) return;
+    const amount = parseFloat(newTxAmount) || 0;
+    if (amount <= 0) {
+      alert("Por favor ingrese un monto mayor a cero.");
+      return;
+    }
+    const res = await addCashTransaction(
+      activeSession.id,
+      newTxType,
+      amount,
+      newTxCategory,
+      newTxNotes
+    );
+    if (res.success) {
+      setNewTxAmount("");
+      setNewTxNotes("");
+      await fetchData();
+    } else {
+      alert(res.error || "Error al registrar movimiento");
+    }
+  };
+
+  const handleCloseSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSession) return;
+    const actualBalance = parseFloat(manualActualBalanceInput) || 0;
+    const res = await closeCashSession(
+      activeSession.id,
+      actualBalance,
+      "Administrador",
+      cashNotesInput
+    );
+    if (res.success) {
+      setCashDifference(res.data.difference);
+      setCashCloseSuccess(true);
+      setShowCalculatorModal(false);
+      setManualActualBalanceInput("");
+      setCashNotesInput("");
+      setCalculatorDenominations({
+        "2000": 0,
+        "1000": 0,
+        "500": 0,
+        "200": 0,
+        "100": 0,
+        "50": 0,
+        "20": 0,
+        "10": 0,
+      });
+      await fetchData();
+    } else {
+      alert(res.error || "Error al cerrar la caja");
+    }
+  };
+
+  const handleCalculatorValueChange = (denom: string, qty: number) => {
+    const updated = {
+      ...calculatorDenominations,
+      [denom]: Math.max(0, qty),
+    };
+    setCalculatorDenominations(updated);
+
+    // Sum all denominations
+    const total = Object.entries(updated).reduce((sum, [d, q]) => {
+      return sum + parseFloat(d) * q;
+    }, 0);
+
+    setManualActualBalanceInput(total.toString());
   };
 
   // Dynamic Weekly Menu fetch for the selected week
@@ -1514,89 +1630,340 @@ export default function AdminDashboardPage() {
           {/* TAB 6: CASH REGISTER CLOSE */}
 
           {activeTab === "cash" && (
-
-            <div className="flex flex-col gap-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Arqueo y Cierre de Caja Diario</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">Controla los ingresos del día versus lo registrado por el sistema para detectar diferencias de caja.</p>
+            <div className="flex flex-col gap-8">
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-zinc-900 pb-4">
+                <div>
+                  <h2 className="text-2xl font-black text-white tracking-tight">Arqueo y Cierre de Caja</h2>
+                  <p className="text-xs text-zinc-500 mt-1">Control contable persistente y auditoría de diferencias diarias de caja chica.</p>
+                </div>
+                {activeSession && (
+                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full text-xs font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Turno Abierto por: {activeSession.openedBy} ({new Date(activeSession.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Caja Física</h3>
-                  <form onSubmit={handleCalculateCashDifference} className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Efectivo en Caja ($)</label>
+              {!activeSession ? (
+                /* 1. STATE: NO ACTIVE SESSION (OPEN CASH REGISTER FORM) */
+                <div className="max-w-md mx-auto w-full glass-panel p-8 rounded-3xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-6 mt-6 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-3xl rounded-full"></div>
+                  <div className="flex flex-col gap-2 text-center">
+                    <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                      <DollarSign className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">Apertura de Caja Obligatoria</h3>
+                    <p className="text-xs text-zinc-500">Para iniciar a registrar ventas en efectivo y controlar diferencias de caja, debés ingresar el saldo inicial.</p>
+                  </div>
+
+                  <form onSubmit={handleOpenSession} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider">Efectivo Inicial en Caja (Cambio) ($)</label>
                       <input 
                         type="number"
-                        value={cashAmount}
-                        onChange={(e) => setCashAmount(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                        required
+                        value={openingBalanceInput}
+                        onChange={(e) => setOpeningBalanceInput(e.target.value)}
+                        placeholder="Ej. 10000"
+                        className="bg-zinc-950 border border-zinc-900 text-sm text-white p-4 rounded-xl outline-none font-mono text-center focus:border-amber-500/50 transition-colors"
                       />
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Transferencias Recibidas ($)</label>
-                      <input 
-                        type="number"
-                        value={transferAmount}
-                        onChange={(e) => setTransferAmount(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-zinc-400 text-[10px] font-bold uppercase">Gastos / Retiros del Día ($)</label>
-                      <input 
-                        type="number"
-                        value={expenses}
-                        onChange={(e) => setExpenses(e.target.value)}
-                        className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
-                      />
-                    </div>
-                    <PremiumButton type="submit" variant="primary" size="sm" className="w-full justify-center">
-                      Verificar Diferencias
+                    <PremiumButton type="submit" variant="primary" size="lg" className="w-full justify-center py-4 font-bold shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 transition-all">
+                      Abrir Turno de Caja
                     </PremiumButton>
                   </form>
-                </div>
 
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Ingresos Registrados por LYNX</h3>
-                    <div className="flex flex-col gap-3 text-xs mb-6">
-                      {stats?.dailyClose.length === 0 ? (
-                        <p className="text-zinc-500">Hoy no se han registrado ventas aún.</p>
-                      ) : (
-                        stats?.dailyClose.map((c: any) => (
-                          <div key={c.paymentMethod} className="flex justify-between border-b border-zinc-900 pb-2">
-                            <span className="text-zinc-400 font-bold uppercase">{c.paymentMethod}</span>
-                            <span className="text-white font-mono">${c.totalRevenue.toFixed(2)} ({c.count} ped.)</span>
-                          </div>
-                        ))
-                      )}
-                      <div className="flex justify-between font-black text-amber-500 text-sm mt-2">
-                        <span>Total Sistema:</span>
-                        <span>${stats?.dailyClose.reduce((sum: number, d: any) => sum + d.totalRevenue, 0).toFixed(2)}</span>
+                  {/* Show previous close result message if exist */}
+                  {cashCloseSuccess && cashDifference !== null && (
+                    <div className={`p-4 rounded-xl border text-xs flex flex-col gap-1.5 mt-2 ${
+                      cashDifference === 0 
+                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                        : cashDifference > 0 
+                          ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                          : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                    }`}>
+                      <p className="font-bold flex items-center gap-1.5">
+                        <CheckSquare className="w-4 h-4" /> Último Arqueo Grabado Exitosamente
+                      </p>
+                      <p>
+                        Diferencia contable final:{" "}
+                        <strong className="underline font-mono">
+                          {cashDifference >= 0 ? `+$${cashDifference.toFixed(2)} (Sobrante)` : `-$${Math.abs(cashDifference).toFixed(2)} (Faltante)`}
+                        </strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* 2. STATE: ACTIVE SESSION OPEN (SHIFT ONGOING) */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column: Totals & Blind Close */}
+                  <div className="flex flex-col gap-6 lg:col-span-2">
+                    <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-6 relative overflow-hidden">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider">Resumen de Turno en Tiempo Real</h3>
+                        <div className="flex items-center gap-2 bg-zinc-950 p-1.5 rounded-lg border border-zinc-900">
+                          <label className="text-[10px] text-zinc-400 font-bold uppercase cursor-pointer" htmlFor="blind-switch">Arqueo Ciego</label>
+                          <input 
+                            id="blind-switch"
+                            type="checkbox"
+                            checked={blindClose}
+                            onChange={(e) => setBlindClose(e.target.checked)}
+                            className="w-3.5 h-3.5 accent-amber-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Financial summary breakdown */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-900/50 flex flex-col gap-1">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">Monto Inicial</span>
+                          <span className="text-sm font-mono text-zinc-300">${activeSession.openingBalance.toFixed(2)}</span>
+                        </div>
+                        <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-900/50 flex flex-col gap-1">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">Ventas (Efectivo)</span>
+                          <span className="text-sm font-mono text-emerald-500">
+                            +${activeSession.transactions
+                              .filter(t => t.type === "SALE" && t.category === "CASH")
+                              .reduce((sum, t) => sum + t.amount, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-900/50 flex flex-col gap-1">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">Otros Ingresos (Pay In)</span>
+                          <span className="text-sm font-mono text-blue-400">
+                            +${activeSession.transactions
+                              .filter(t => t.type === "PAY_IN" && t.category !== "FLOAT")
+                              .reduce((sum, t) => sum + t.amount, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-900/50 flex flex-col gap-1">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">Egresos (Pay Out)</span>
+                          <span className="text-sm font-mono text-rose-500">
+                            -${activeSession.transactions
+                              .filter(t => t.type === "PAY_OUT")
+                              .reduce((sum, t) => sum + t.amount, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Total Expected Card */}
+                      <div className="bg-gradient-to-r from-zinc-950 to-zinc-900/80 p-6 rounded-xl border border-zinc-900 flex justify-between items-center shadow-inner">
+                        <div>
+                          <p className="text-[10px] text-zinc-400 font-black uppercase tracking-wider">Esperado en Caja Físico</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">(Fórmula: Inicial + Ventas Efectivo + Ingresos - Egresos)</p>
+                        </div>
+                        <div className="text-right">
+                          {blindClose ? (
+                            <span className="text-lg font-bold text-zinc-600 tracking-wider">••••••</span>
+                          ) : (
+                            <span className="text-2xl font-black text-amber-500 font-mono">
+                              ${activeSession.expectedBalance.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-4 mt-2">
+                        <PremiumButton 
+                          onClick={() => {
+                            setManualActualBalanceInput("");
+                            setShowCalculatorModal(true);
+                          }}
+                          variant="primary" 
+                          size="md" 
+                          className="flex-1 justify-center py-3 font-bold"
+                        >
+                          Cerrar Turno / Arqueo Diario
+                        </PremiumButton>
+                      </div>
+                    </div>
+
+                    {/* Transaction Log list */}
+                    <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">Movimientos del Turno Actual</h3>
+                      <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+                        {activeSession.transactions.length === 0 ? (
+                          <p className="text-zinc-500 text-xs py-4 text-center">No se han registrado movimientos todavía.</p>
+                        ) : (
+                          activeSession.transactions.map((t) => (
+                            <div key={t.id} className="flex justify-between items-center border-b border-zinc-950 pb-2 text-xs">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-white font-bold flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    t.type === "SALE" ? "bg-emerald-500" : t.type === "PAY_IN" ? "bg-blue-400" : "bg-rose-500"
+                                  }`}></span>
+                                  {t.notes || `${t.type} - ${t.category}`}
+                                </span>
+                                <span className="text-[10px] text-zinc-500">
+                                  {new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Categoría: {t.category}
+                                </span>
+                              </div>
+                              <span className={`font-mono font-bold ${
+                                t.type === "PAY_OUT" ? "text-rose-500" : "text-zinc-300"
+                              }`}>
+                                {t.type === "PAY_OUT" ? "-" : "+"}${t.amount.toFixed(2)}
+                              </span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {cashCloseSuccess && cashDifference !== null && (
-                    <div className={`p-4 rounded-xl border text-xs flex flex-col gap-1 ${
-                      cashDifference === 0 
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
-                        : "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                    }`}>
-                      <p className="font-bold flex items-center gap-1.5">
-                        <CheckSquare className="w-4 h-4" /> Arqueo Calculado
-                      </p>
-                      <p>
-                        Diferencia de caja:{" "}
-                        <strong className="underline">
-                          {cashDifference >= 0 ? `+$${cashDifference.toFixed(2)}` : `-$${Math.abs(cashDifference).toFixed(2)}`}
-                        </strong>
-                      </p>
-                      <p className="text-[10px] text-zinc-500 mt-1">Cierre grabado exitosamente.</p>
+                  {/* Right Column: Register transaction Pay In / Pay Out */}
+                  <div className="flex flex-col gap-6">
+                    <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">Registrar Movimiento de Efectivo</h3>
+                      <form onSubmit={handleRegisterTransaction} className="flex flex-col gap-4">
+                        {/* Transaction Type selection */}
+                        <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-900">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewTxType("PAY_OUT");
+                              setNewTxCategory("SUPPLIER");
+                            }}
+                            className={`py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                              newTxType === "PAY_OUT" 
+                                ? "bg-rose-500/10 border border-rose-500/20 text-rose-400" 
+                                : "text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            Egreso (Retiro/Gasto)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewTxType("PAY_IN");
+                              setNewTxCategory("OTHER");
+                            }}
+                            className={`py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                              newTxType === "PAY_IN" 
+                                ? "bg-blue-500/10 border border-blue-500/20 text-blue-400" 
+                                : "text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            Ingreso (Carga cambio)
+                          </button>
+                        </div>
+
+                        {/* Amount */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-zinc-400 text-[10px] font-bold uppercase">Monto ($)</label>
+                          <input 
+                            type="number"
+                            required
+                            placeholder="0.00"
+                            value={newTxAmount}
+                            onChange={(e) => setNewTxAmount(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                          />
+                        </div>
+
+                        {/* Category */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-zinc-400 text-[10px] font-bold uppercase">Categoría</label>
+                          <select
+                            value={newTxCategory}
+                            onChange={(e) => setNewTxCategory(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                          >
+                            {newTxType === "PAY_OUT" ? (
+                              <>
+                                <option value="SUPPLIER">Proveedor (Materia prima/Viandas/Ropa)</option>
+                                <option value="PERSONAL">Retiro Personal / Socio</option>
+                                <option value="REFUND">Devolución a Cliente</option>
+                                <option value="OTHER">Otros Gastos Varios</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="FLOAT">Ingreso Extra para Cambio</option>
+                                <option value="OTHER">Otros Ingresos / Aportes</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-zinc-400 text-[10px] font-bold uppercase">Descripción / Nota</label>
+                          <input 
+                            type="text"
+                            placeholder="Ej: Pago verdulería turnos viandas"
+                            value={newTxNotes}
+                            onChange={(e) => setNewTxNotes(e.target.value)}
+                            className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none"
+                          />
+                        </div>
+
+                        <PremiumButton type="submit" variant="secondary" size="sm" className="w-full justify-center">
+                          Grabar Movimiento
+                        </PremiumButton>
+                      </form>
                     </div>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. HISTORY OF CLOSED SESSIONS */}
+              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4 mt-2">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Historial de Turnos y Cierres de Caja</h3>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase">Cierres guardados en Neon</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-900 text-zinc-400 uppercase tracking-wider font-bold text-[10px]">
+                        <th className="py-3 px-4">Fecha y Hora Cierre</th>
+                        <th className="py-3 px-4">Operador</th>
+                        <th className="py-3 px-4">Fondo Inicial</th>
+                        <th className="py-3 px-4 text-right">Saldo Esperado</th>
+                        <th className="py-3 px-4 text-right">Contado Real</th>
+                        <th className="py-3 px-4 text-right">Diferencia</th>
+                        <th className="py-3 px-4">Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessionHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-zinc-500">
+                            No hay registros de cierres anteriores.
+                          </td>
+                        </tr>
+                      ) : (
+                        sessionHistory.map((s) => (
+                          <tr key={s.id} className="border-b border-zinc-950 hover:bg-zinc-950/20">
+                            <td className="py-3 px-4 font-mono text-zinc-400">
+                              {new Date(s.closedAt).toLocaleDateString()} {new Date(s.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-3 px-4 text-white font-bold">{s.closedBy}</td>
+                            <td className="py-3 px-4 font-mono text-zinc-500">${s.openingBalance.toFixed(2)}</td>
+                            <td className="py-3 px-4 font-mono text-zinc-300 text-right">${s.expectedBalance.toFixed(2)}</td>
+                            <td className="py-3 px-4 font-mono text-white text-right">${s.actualBalance?.toFixed(2)}</td>
+                            <td className={`py-3 px-4 font-mono text-right font-black ${
+                              s.difference === 0 
+                                ? "text-emerald-500" 
+                                : s.difference > 0 
+                                  ? "text-blue-400" 
+                                  : "text-rose-500"
+                            }`}>
+                              {s.difference >= 0 ? `+$${s.difference.toFixed(2)}` : `-$${Math.abs(s.difference).toFixed(2)}`}
+                            </td>
+                            <td className="py-3 px-4 text-zinc-400 italic max-w-xs truncate" title={s.notes || ""}>
+                              {s.notes || "-"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -2095,6 +2462,122 @@ export default function AdminDashboardPage() {
           </div>
         );
       })()}
+
+      {showCalculatorModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all">
+          <div className="glass-panel max-w-lg w-full p-6 md:p-8 rounded-3xl border border-zinc-800 bg-zinc-950/90 shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start border-b border-zinc-900 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-amber-500" />
+                  Desglose de Efectivo Físico
+                </h3>
+                <p className="text-[10px] text-zinc-500 mt-1">Ingresá la cantidad de billetes de cada denominación para el conteo de arqueo.</p>
+              </div>
+              <button 
+                onClick={() => setShowCalculatorModal(false)}
+                className="text-zinc-500 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Denomination Rows */}
+            <div className="flex flex-col gap-3">
+              {[
+                { label: "Billetes de $2000", value: "2000" },
+                { label: "Billetes de $1000", value: "1000" },
+                { label: "Billetes de $500", value: "500" },
+                { label: "Billetes de $200", value: "200" },
+                { label: "Billetes de $100", value: "100" },
+                { label: "Billetes de $50", value: "50" },
+                { label: "Billetes de $20", value: "20" },
+                { label: "Billetes/Monedas de $10", value: "10" }
+              ].map((denom) => (
+                <div key={denom.value} className="grid grid-cols-12 items-center gap-4 bg-zinc-900/20 p-2.5 rounded-xl border border-zinc-900/60 text-xs">
+                  <div className="col-span-5 font-bold text-zinc-400">{denom.label}</div>
+                  <div className="col-span-3 flex items-center justify-center gap-1.5">
+                    <input 
+                      type="number"
+                      min="0"
+                      value={calculatorDenominations[denom.value] || ""}
+                      onChange={(e) => handleCalculatorValueChange(denom.value, parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className="bg-zinc-950 border border-zinc-800 text-center font-mono text-white p-2 rounded-lg w-full outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+                  <div className="col-span-4 text-right font-mono font-bold text-zinc-300">
+                    ${((calculatorDenominations[denom.value] || 0) * parseInt(denom.value)).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total Display */}
+            <div className="bg-zinc-900/60 p-4 rounded-xl border border-zinc-900 flex justify-between items-center text-xs">
+              <span className="font-bold text-zinc-400">Total Efectivo Físico Calculado:</span>
+              <span className="font-mono text-lg font-black text-amber-500">
+                ${(parseFloat(manualActualBalanceInput) || 0).toFixed(2)}
+              </span>
+            </div>
+
+            {/* Confirmation Form */}
+            <form onSubmit={handleCloseSession} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5 text-xs">
+                <label className="text-zinc-400 font-bold uppercase tracking-wider text-[10px]">Efectivo Final Real ($)</label>
+                <input 
+                  type="number"
+                  required
+                  placeholder="0.00"
+                  value={manualActualBalanceInput}
+                  onChange={(e) => setManualActualBalanceInput(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 text-sm text-white p-3 rounded-xl outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5 text-xs">
+                <label className="text-zinc-400 font-bold uppercase tracking-wider text-[10px]">Observaciones / Novedades</label>
+                <textarea 
+                  placeholder="Ej. Faltaron $50 por diferencia de cambio / Se retiraron los $20000 para el depósito bancario..."
+                  value={cashNotesInput}
+                  onChange={(e) => setCashNotesInput(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-900 text-xs text-white p-3 rounded-xl outline-none h-16 resize-none"
+                />
+              </div>
+
+              {activeSession && !blindClose && (
+                <div className="text-[10px] text-zinc-550 font-bold">
+                  Diferencia esperada:{" "}
+                  <strong className={`font-mono ${
+                    ((parseFloat(manualActualBalanceInput) || 0) - activeSession.expectedBalance) === 0 
+                      ? "text-emerald-500" 
+                      : ((parseFloat(manualActualBalanceInput) || 0) - activeSession.expectedBalance) > 0 
+                        ? "text-blue-400" 
+                        : "text-rose-500"
+                  }`}>
+                    {((parseFloat(manualActualBalanceInput) || 0) - activeSession.expectedBalance) >= 0 ? "+" : ""}
+                    {((parseFloat(manualActualBalanceInput) || 0) - activeSession.expectedBalance).toFixed(2)}
+                  </strong>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end mt-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowCalculatorModal(false)}
+                  className="bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-400 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                >
+                  Volver
+                </button>
+                <PremiumButton type="submit" variant="primary" size="sm" className="font-bold px-6">
+                  Confirmar y Guardar Cierre
+                </PremiumButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

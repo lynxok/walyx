@@ -41,6 +41,7 @@ model Tenant {
   clothingTypes   ClothingType[]
   groupGifts      GroupGift[]
   cartSessions    CartSession[]
+  cashSessions    CashSession[]
 }
 
 model Category {
@@ -288,4 +289,34 @@ model CartSession {
   status       String      @default("ACTIVE") // ACTIVE, ABANDONED, RECOVERED, CONVERTED
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+}
+
+model CashSession {
+  id              String            @id @default(uuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  openedBy        String            @default("Cajero")
+  closedBy        String?
+  openedAt        DateTime          @default(now())
+  closedAt        DateTime?
+  openingBalance  Float
+  expectedBalance Float             @default(0)
+  actualBalance   Float?
+  difference      Float?
+  status          String            @default("OPEN") // "OPEN", "CLOSED"
+  notes           String?
+  transactions    CashTransaction[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model CashTransaction {
+  id          String      @id @default(uuid())
+  sessionId   String
+  session     CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type        String      // "PAY_IN", "PAY_OUT", "SALE", "REFUND"
+  amount      Float
+  category    String      // "SALE", "REFUND", "SUPPLIER", "FLOAT", "PERSONAL", "OTHER"
+  notes       String?
+  createdAt   DateTime    @default(now())
 }

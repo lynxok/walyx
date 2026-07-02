@@ -173,6 +173,40 @@ export async function createOrder(input: CreateOrderInput) {
       },
     });
 
+    // Register sale in active cash session if one exists
+    try {
+      const activeSession = await db.cashSession.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          status: "OPEN",
+        },
+      });
+
+      if (activeSession) {
+        await db.cashTransaction.create({
+          data: {
+            sessionId: activeSession.id,
+            type: "SALE",
+            amount: orderTotal,
+            category: input.paymentMethod,
+            notes: `Venta - Pedido #${order.id.slice(-6)}`,
+          },
+        });
+
+        // Update expectedBalance
+        await db.cashSession.update({
+          where: { id: activeSession.id },
+          data: {
+            expectedBalance: {
+              increment: orderTotal,
+            },
+          },
+        });
+      }
+    } catch (sessionErr) {
+      console.error("Error linking order to cash session:", sessionErr);
+    }
+
     // 5. Build WhatsApp text message for the user redirection
     const storePhone = "+5491122334455"; // Reemplazar con el teléfono configurado del inquilino
     
