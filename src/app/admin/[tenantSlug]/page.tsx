@@ -681,71 +681,76 @@ export default function AdminDashboardPage() {
       </header>
 
       {/* Mobile Drawer Navigation Menu */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}>
-          <aside 
-            onClick={(e) => e.stopPropagation()}
-            className="fixed left-0 top-0 bottom-0 w-72 bg-zinc-950/95 border-r border-white/[0.06] p-6 flex flex-col gap-2.5 shadow-2xl overflow-y-auto"
-          >
-            <div className="flex justify-between items-center pb-4 border-b border-zinc-900 mb-2">
-              <div>
-                <h4 className="font-black text-white text-sm">{tenant.name}</h4>
-                <p className="text-[10px] text-zinc-500">Menú de Navegación</p>
-              </div>
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <div 
+        onClick={() => setIsMobileMenuOpen(false)}
+        className={`fixed inset-0 bg-black/85 backdrop-blur-sm z-50 lg:hidden transition-opacity duration-300 ${
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <aside 
+          onClick={(e) => e.stopPropagation()}
+          className={`fixed left-0 top-0 bottom-0 w-72 bg-zinc-950/95 border-r border-white/[0.06] p-6 flex flex-col gap-2.5 shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-in-out ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex justify-between items-center pb-4 border-b border-zinc-900 mb-2">
+            <div>
+              <h4 className="font-black text-white text-sm">{tenant.name}</h4>
+              <p className="text-[10px] text-zinc-500">Menú de Navegación</p>
             </div>
-            {[
-              { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
-              { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
-              { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
-              { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
-              ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
-              ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
-              ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
-              { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
-              { id: "recovery", label: "Recuperar Ventas", icon: <LifeBuoy className="w-4 h-4" /> },
-              { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
-              { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> },
-              { id: "help", label: "Ayuda & Soporte", icon: <LifeBuoy className="w-4 h-4 animate-pulse" /> }
-            ].map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  style={isActive ? {
-                    backgroundColor: "rgba(var(--primary-rgb), 0.08)",
-                    borderColor: "rgba(var(--primary-rgb), 0.15)",
-                    color: "var(--primary-color)"
-                  } : {}}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border relative transition-all duration-300 ${
-                    isActive
-                      ? "shadow-sm shadow-black/10"
-                      : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
-                  }`}
-                >
-                  {isActive && (
-                    <span 
-                      style={{ backgroundColor: "var(--primary-color)", boxShadow: "0 0 10px var(--primary-color)" }}
-                      className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r"
-                    ></span>
-                  )}
-                  {item.icon}
-                  {item.label}
-                </button>
-              );
-            })}
-          </aside>
-        </div>
-      )}
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {[
+            { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
+            { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
+            { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
+            { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
+            ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
+            ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
+            ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
+            { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
+            { id: "recovery", label: "Recuperar Ventas", icon: <LifeBuoy className="w-4 h-4" /> },
+            { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
+            { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> },
+            { id: "help", label: "Ayuda & Soporte", icon: <LifeBuoy className="w-4 h-4 animate-pulse" /> }
+          ].map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                style={isActive ? {
+                  backgroundColor: "rgba(var(--primary-rgb), 0.08)",
+                  borderColor: "rgba(var(--primary-rgb), 0.15)",
+                  color: "var(--primary-color)"
+                } : {}}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border relative transition-all duration-300 ${
+                  isActive
+                    ? "shadow-sm shadow-black/10"
+                    : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
+                }`}
+              >
+                {isActive && (
+                  <span 
+                    style={{ backgroundColor: "var(--primary-color)", boxShadow: "0 0 10px var(--primary-color)" }}
+                    className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r"
+                  ></span>
+                )}
+                {item.icon}
+                {item.label}
+              </button>
+            );
+          })}
+        </aside>
+      </div>
 
       {/* Main Admin Grid */}
       <div className="flex-1 flex flex-col lg:flex-row gap-6 p-6 lg:p-8 max-w-7xl w-full mx-auto relative z-10">
