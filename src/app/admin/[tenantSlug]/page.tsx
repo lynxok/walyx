@@ -645,37 +645,40 @@ export default function AdminDashboardPage() {
       <div className="absolute bottom-[-200px] right-[-200px] w-[600px] h-[600px] bg-[rgba(var(--primary-rgb),0.03)] blur-[150px] rounded-full pointer-events-none" />
       <div className="absolute top-[30%] right-[10%] w-[500px] h-[500px] bg-[rgba(var(--primary-rgb),0.02)] blur-[130px] rounded-full pointer-events-none" />
       {/* Top Banner Header */}
-      <header className="border-b border-white/[0.06] bg-zinc-950/70 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-lg shadow-black/20">
-        <div className="flex items-center gap-4">
+      <header className="border-b border-white/[0.06] bg-zinc-950/70 backdrop-blur-md sticky top-0 z-40 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between shadow-lg shadow-black/20 gap-3">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
-            className="lg:hidden p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl text-zinc-450 hover:text-white hover:bg-zinc-900 transition-all duration-300"
+            className="lg:hidden p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-300 shrink-0"
           >
             <Menu className="w-4 h-4" />
           </button>
-          <Link href="/" className="p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all duration-300">
+          <Link href="/" className="p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all duration-300 shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-black text-white tracking-tight">{tenant.name}</h1>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <h1 className="text-sm md:text-lg font-black text-white tracking-tight truncate max-w-[130px] sm:max-w-xs md:max-w-none">{tenant.name}</h1>
               <span 
                 style={{
                   backgroundColor: "rgba(var(--primary-rgb), 0.1)",
                   borderColor: "rgba(var(--primary-rgb), 0.2)",
                   color: "var(--primary-color)"
                 }}
-                className="text-[10px] px-2.5 py-0.5 border rounded-full font-black uppercase tracking-wider"
+                className="text-[8px] md:text-[9px] px-2 py-0.5 border rounded-full font-black uppercase tracking-wider shrink-0"
               >
                 {hasType}
               </span>
             </div>
-            <p className="text-xs text-zinc-500">Panel de Administración / {tenant.slug}</p>
+            <p className="text-[9px] md:text-xs text-zinc-500 truncate mt-0.5">Panel de Administración / {tenant.slug}</p>
           </div>
         </div>
-        <Link href={`/shop/${tenant.slug}`}>
-          <PremiumButton variant="outline" size="sm" className="hover:scale-[1.02] active:scale-[0.98] transition-all">
+        <Link href={`/shop/${tenant.slug}`} className="shrink-0">
+          <PremiumButton variant="outline" size="sm" className="hover:scale-[1.02] active:scale-[0.98] transition-all hidden sm:flex items-center">
             Ver Tienda Pública <ChevronRight className="w-4 h-4 ml-1" />
+          </PremiumButton>
+          <PremiumButton variant="outline" size="sm" className="hover:scale-[1.02] active:scale-[0.98] transition-all flex sm:hidden p-2.5 items-center justify-center">
+            <ChevronRight className="w-4 h-4" />
           </PremiumButton>
         </Link>
       </header>
