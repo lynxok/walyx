@@ -51,3 +51,20 @@ Este documento recopila las decisiones de arquitectura, diseño de interfaz y tr
 
 * Las sesiones de caja utilizan los modelos de Prisma `CashSession` y `CashTransaction` para persistir aperturas, depósitos/retiros (`PAY_IN` / `PAY_OUT`) y cierres.
 * Toda transacción de venta generada con método de pago `CASH` en la tienda pública del inquilino busca de manera automática la sesión activa de caja del día para registrar un cobro de forma centralizada y mantener la trazabilidad del dinero físico esperado.
+
+---
+
+## 5. Kanban de Pedidos y Optimización para Mobile/iOS
+
+* **Problema de Recarga de Pantalla Completa:**
+  * **Causa:** Llamar a `fetchData()` tras cambiar de estado una orden activaba el loader de pantalla completa `setLoading(true)`, desmontando toda la UI.
+  * **Solución:** `fetchData` ahora admite un parámetro `silent: boolean = false`. Cuando es `true`, los datos se actualizan en segundo plano (silent refetch) combinándose con actualizaciones de estado optimistas locales.
+* **Conflicto de Drag-and-Drop y Scroll en iOS:**
+  * **Problema:** En celulares (especialmente iOS/Safari), el gesto táctil del usuario para arrastrar una tarjeta interfiere con el scroll vertical de la pantalla. Si se desactiva el scroll mediante `touch-action: none`, el usuario no puede navegar hacia abajo en el tablero para ver el resto de columnas o tarjetas inferiores.
+  * **Solución:**
+    1. **Desactivar Drag Táctil en Mobile:** Eliminar interacciones complejas de arrastre por touch en smartphones (manteniendo el drag-and-drop con mouse en computadoras).
+    2. **Controles de Estado Rápidos (Botones):** Habilitar botones de acción directa en las tarjetas móviles para cambiar su estado con un solo tap (ej. "PREPARAR →", "ENTREGAR →", "REABRIR", "CANCELAR").
+    3. **Evitar Propagación:** Aplicar `e.stopPropagation()` en los botones de transición rápida de la tarjeta para evitar abrir el panel de detalles del pedido al presionarlos.
+* **Espacios Vacíos (Gaps) Responsivos en Kanban:**
+  * Las columnas Kanban vacías o con pocos pedidos tenían un `min-h-[500px]` fijo, provocando un vacío gigante en mobile. Se optimizó usando `min-h-[150px] md:min-h-[500px]` para que el layout colapse adecuadamente en celulares de forma compacta.
+
