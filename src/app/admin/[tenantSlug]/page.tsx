@@ -29,7 +29,8 @@ import {
   Phone,
   MapPin,
   Info,
-  Menu
+  Menu,
+  ChefHat
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
@@ -54,6 +55,7 @@ import CatalogManagement from "@/components/admin/CatalogManagement";
 import StockManagement from "@/components/admin/StockManagement";
 import SizeChartManagement from "@/components/admin/SizeChartManagement";
 import ShopCustomization from "@/components/admin/ShopCustomization";
+import KitchenProductionManagement from "@/components/admin/KitchenProductionManagement";
 
 
 const MOCK_KANBAN_ORDERS = [
@@ -720,6 +722,7 @@ export default function AdminDashboardPage() {
           {[
             { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
             { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
+            ...(hasType !== "ROPA" ? [{ id: "kitchen", label: "Cocina (Consolidado)", icon: <ChefHat className="w-4 h-4" /> }] : []),
             { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
             { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
             ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
@@ -771,6 +774,7 @@ export default function AdminDashboardPage() {
           {[
             { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
             { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
+            ...(hasType !== "ROPA" ? [{ id: "kitchen", label: "Cocina (Consolidado)", icon: <ChefHat className="w-4 h-4" /> }] : []),
             { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
             { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
             ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
@@ -1458,6 +1462,13 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             </div>
+          )}
+
+          {/* TAB: KITCHEN CONSOLIDATED */}
+          {activeTab === "kitchen" && hasType !== "ROPA" && (
+            <KitchenProductionManagement
+              tenant={tenant}
+            />
           )}
 
           {/* TAB 2: CATALOG */}
