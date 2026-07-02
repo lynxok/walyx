@@ -134,6 +134,9 @@ export default function AdminDashboardPage() {
   const [selectedKanbanOrder, setSelectedKanbanOrder] = useState<any>(null);
   const [kanbanOrders, setKanbanOrders] = useState(MOCK_KANBAN_ORDERS);
   const [draggingOrderId, setDraggingOrderId] = useState<string | null>(null);
+  const [touchStartOffset, setTouchStartOffset] = useState<{ x: number; y: number; percentX: number; percentY: number } | null>(null);
+  const [touchOffset, setTouchOffset] = useState<{ x: number; y: number } | null>(null);
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
 
   const updateKanbanOrderStatus = async (orderId: string, newStatus: string) => {
     const order = kanbanOrders.find((o) => o.id === orderId);
@@ -162,7 +165,7 @@ export default function AdminDashboardPage() {
     }
 
     setKanbanOrders(prev => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
-    fetchData(); // Refresh products in admin dashboard
+    fetchData(true); // Refresh products in admin dashboard
   };
   const [hoveredColumnStatus, setHoveredColumnStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -357,14 +360,18 @@ export default function AdminDashboardPage() {
     }
   }, [searchQuery, viewFilter, kanbanOrders]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent: boolean = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
 
     const tenantRes = await getTenantBySlug(tenantSlug);
     if (!tenantRes.success || !tenantRes.data) {
       setError(tenantRes.error || "Inquilino no encontrado.");
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
       return;
     }
 
@@ -426,7 +433,9 @@ export default function AdminDashboardPage() {
       console.error("Error loading cash sessions in fetchData:", err);
     }
 
-    setLoading(false);
+    if (!silent) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -1268,7 +1277,7 @@ export default function AdminDashboardPage() {
                         setDraggingOrderId(null);
                         setHoveredColumnStatus(null);
                       }}
-                      className={`glass-panel p-4 rounded-2xl border transition-all duration-200 bg-zinc-900/5 flex flex-col gap-3 min-h-[500px] ${
+                      className={`glass-panel p-4 rounded-2xl border transition-all duration-200 bg-zinc-900/5 flex flex-col gap-3 min-h-[150px] md:min-h-[500px] ${
                         isHovered 
                           ? "border-amber-500/50 ring-2 ring-amber-500/10 bg-amber-500/[0.02]" 
                           : "border-zinc-900"
@@ -1295,47 +1304,57 @@ export default function AdminDashboardPage() {
                         ) : (
                           filteredOrders.map((order) => {
                             const isCardDragging = draggingOrderId === order.id;
+                            const isTouchDragging = isCardDragging && touchOffset !== null;
+
+                            // Dynamic style object for interactive pendulum effect on dragging
+                            const cardStyleObj: React.CSSProperties = {};
+                            if (isTouchDragging && touchOffset && touchStartOffset) {
+                              const rx = touchOffset.x;
+                              // Pendulum swing calculation: angle proportional to drag direction and speed, capped at 5deg
+                              const rotation = Math.max(-5, Math.min(5, rx * 0.04));
+                              cardStyleObj.transform = `translate3d(${touchOffset.x}px, ${touchOffset.y}px, 0) rotate(${rotation}deg)`;
+                              cardStyleObj.transformOrigin = `${touchStartOffset.percentX}% ${touchStartOffset.percentY}%`;
+                              cardStyleObj.zIndex = 50;
+                              cardStyleObj.position = "relative";
+                              cardStyleObj.pointerEvents = "none"; // Make sure we hit test through this element during drag
+                            } else if (isCardDragging && touchStartOffset) {
+                              cardStyleObj.transformOrigin = `${touchStartOffset.percentX}% ${touchStartOffset.percentY}%`;
+                              cardStyleObj.transform = "rotate(2deg)";
+                            }
+
                             return (
                               <div 
                                 key={order.id}
                                 draggable={true}
+                                style={cardStyleObj}
                                 onDragStart={(e) => {
                                   e.dataTransfer.setData("text/plain", order.id);
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = e.clientX - rect.left;
+                                  const y = e.clientY - rect.top;
+                                  setTouchStartOffset({
+                                    x,
+                                    y,
+                                    percentX: (x / rect.width) * 100,
+                                    percentY: (y / rect.height) * 100,
+                                  });
                                   setDraggingOrderId(order.id);
                                 }}
                                 onDragEnd={() => {
                                   setDraggingOrderId(null);
                                   setHoveredColumnStatus(null);
-                                }}
-                                onTouchStart={() => {
-                                  setDraggingOrderId(order.id);
-                                }}
-                                onTouchEnd={(e) => {
-                                  if (!draggingOrderId) return;
-                                  const touch = e.changedTouches[0];
-                                  const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                                  let current: HTMLElement | null = element as HTMLElement;
-                                  let targetColumnStatus: string | null = null;
-                                  while (current) {
-                                    const statusAttr = current.getAttribute("data-column-status");
-                                    if (statusAttr) {
-                                      targetColumnStatus = statusAttr;
-                                      break;
-                                    }
-                                    current = current.parentElement;
-                                  }
-                                  if (targetColumnStatus) {
-                                    updateKanbanOrderStatus(draggingOrderId, targetColumnStatus);
-                                  }
-                                  setDraggingOrderId(null);
-                                  setHoveredColumnStatus(null);
+                                  setTouchStartOffset(null);
+                                  setTouchOffset(null);
+                                  setTouchStartPos(null);
                                 }}
                                 onClick={() => setSelectedKanbanOrder(order)}
                                 className={`p-4 rounded-xl border flex flex-col gap-2.5 cursor-pointer transition-all ${
                                   col.status === "DELIVERED"
                                     ? "bg-zinc-950/40 border-zinc-900/60 opacity-80 hover:border-emerald-500/50 hover:bg-zinc-900/10"
                                     : "bg-zinc-950 border-zinc-900 hover:border-amber-500/50 hover:bg-zinc-900/10"
-                                } ${isCardDragging ? "opacity-50 scale-95 border-amber-500/30" : ""}`}
+                                } ${isCardDragging ? "opacity-50 scale-95 border-amber-500/30" : ""} ${
+                                  isTouchDragging ? "touch-none select-none" : ""
+                                }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <span className={`text-[10px] font-bold ${col.status === "DELIVERED" ? "text-zinc-500" : "text-zinc-400"}`}>#{order.id}</span>
@@ -1347,22 +1366,68 @@ export default function AdminDashboardPage() {
                                     {order.products.map(p => `${p.quantity}x ${p.name}`).join(", ")}
                                   </p>
                                 </div>
-                                {col.actionButton && (
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      updateKanbanOrderStatus(order.id, col.actionButton.nextStatus);
-                                    }}
-                                    className={`w-full ${col.actionButton.bg} text-zinc-950 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${col.actionButton.hoverBg}`}
-                                  >
-                                    {col.actionButton.label}
-                                  </button>
-                                )}
-                                {col.deliveredText && (
-                                  <span className="text-[9px] text-emerald-500 text-center font-bold uppercase">
-                                    {col.deliveredText}
-                                  </span>
-                                )}
+
+                                {/* Botones rápidos de control */}
+                                <div className="mt-2 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                  {order.status === "PENDING" && (
+                                    <div className="flex gap-1.5">
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "PREPARING")}
+                                        className="flex-1 bg-amber-500 hover:bg-amber-600 text-zinc-950 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all duration-200"
+                                      >
+                                        Preparar →
+                                      </button>
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "CANCELLED")}
+                                        className="bg-transparent border border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase transition-all duration-200"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  )}
+                                  {order.status === "PREPARING" && (
+                                    <div className="flex gap-1.5">
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "DELIVERED")}
+                                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all duration-200"
+                                      >
+                                        Entregar →
+                                      </button>
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "CANCELLED")}
+                                        className="bg-transparent border border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase transition-all duration-200"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  )}
+                                  {order.status === "DELIVERED" && (
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-1 rounded">
+                                        Entregado
+                                      </span>
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "PREPARING")}
+                                        className="bg-transparent border border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 py-1 px-2.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200"
+                                      >
+                                        Reabrir Orden
+                                      </button>
+                                    </div>
+                                  )}
+                                  {order.status === "CANCELLED" && (
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider bg-zinc-800 px-2 py-1 rounded">
+                                        Cancelado
+                                      </span>
+                                      <button 
+                                        onClick={() => updateKanbanOrderStatus(order.id, "PENDING")}
+                                        className="bg-transparent border border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 py-1 px-2.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-200"
+                                      >
+                                        Reactivar
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             );
                           })
@@ -2428,7 +2493,7 @@ export default function AdminDashboardPage() {
                             window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
                             
                             // Reload list
-                            fetchData();
+                            fetchData(true);
                           };
 
                           return (
