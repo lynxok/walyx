@@ -55,21 +55,22 @@ export default function Home() {
       <div className="absolute bottom-1/4 left-10 w-[450px] h-[450px] rounded-full blur-[160px] pointer-events-none animate-orb-1" style={{ backgroundColor: 'rgba(37, 99, 235, 0.12)' }} />
 
       {/* Navbar */}
-      <header className="border-b border-white/5 bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <Link href="/" className="flex items-center gap-3.5">
-          <img src="/walyx-logo.png" alt="Walyx Symbol" className="h-12 w-auto object-contain" />
-          <img src="/walyx-texto.png" alt="Walyx Text" className="h-11 w-auto object-contain mt-1" />
+      <header className="border-b border-white/5 bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between max-w-7xl mx-auto w-full gap-3">
+        <Link href="/" className="flex items-center gap-2 md:gap-3.5 shrink-0">
+          <img src="/walyx-logo.png" alt="Walyx Symbol" className="h-9 md:h-12 w-auto object-contain" />
+          <img src="/walyx-texto.png" alt="Walyx Text" className="h-8 md:h-11 w-auto object-contain mt-1 hidden sm:block" />
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <Link href="/login">
-            <PremiumButton variant="ghost" size="md">
+            <PremiumButton variant="ghost" size="sm" className="px-2.5 sm:px-4 text-xs">
               Ingresar
             </PremiumButton>
           </Link>
-          <div className="w-px h-5 bg-white/10" />
+          <div className="w-px h-4 bg-white/10 hidden sm:block" />
           <Link href="/onboarding">
-            <PremiumButton variant="primary" size="md" glow>
-              Registrar mi Negocio
+            <PremiumButton variant="primary" size="sm" glow className="text-xs px-3 sm:px-5 font-bold">
+              <span className="hidden sm:inline">Registrar mi Negocio</span>
+              <span className="inline sm:hidden">Registrarse</span>
             </PremiumButton>
           </Link>
         </div>
