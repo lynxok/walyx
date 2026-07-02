@@ -18,7 +18,8 @@ import {
   LogIn,
   LogOut,
   User,
-  Ruler
+  Ruler,
+  AlertTriangle
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getProductsByTenant } from "@/app/actions/product";
@@ -73,6 +74,21 @@ export default function ShopPublicPage() {
   const [textColor, setTextColor] = useState("#ffffff");
   const [fontFamily, setFontFamily] = useState("Outfit");
   const [cardStyle, setCardStyle] = useState<"glass" | "classic" | "minimal">("glass");
+  const [borderRadius, setBorderRadius] = useState<"none" | "subtle" | "rounded" | "pill">("rounded");
+
+  // Announcement Bar
+  const [announcementText, setAnnouncementText] = useState("");
+  const [announcementActive, setAnnouncementActive] = useState(false);
+  const [announcementBg, setAnnouncementBg] = useState("#f59e0b");
+
+  // Social Links
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [whatsappUrl, setWhatsappUrl] = useState("");
+
+  // Holiday operational shutdown
+  const [isStoreClosed, setIsStoreClosed] = useState(false);
+  const [storeClosedMessage, setStoreClosedMessage] = useState("");
 
   // Cart State (for Ropa/Pastelería)
   const [cart, setCart] = useState<any[]>([]);
@@ -172,6 +188,19 @@ export default function ShopPublicPage() {
         if (theme.textColor) setTextColor(theme.textColor);
         if (theme.fontFamily) setFontFamily(theme.fontFamily);
         if (theme.cardStyle) setCardStyle(theme.cardStyle);
+        if (theme.borderRadius) setBorderRadius(theme.borderRadius);
+
+        // Expanded settings
+        if (theme.announcementText) setAnnouncementText(theme.announcementText);
+        setAnnouncementActive(!!theme.announcementActive);
+        if (theme.announcementBg) setAnnouncementBg(theme.announcementBg);
+
+        if (theme.instagramUrl) setInstagramUrl(theme.instagramUrl);
+        if (theme.tiktokUrl) setTiktokUrl(theme.tiktokUrl);
+        if (theme.whatsappUrl) setWhatsappUrl(theme.whatsappUrl);
+
+        setIsStoreClosed(!!theme.isStoreClosed);
+        if (theme.storeClosedMessage) setStoreClosedMessage(theme.storeClosedMessage);
       } catch (e) {
         console.error("Failed to parse theme settings:", e);
       }
@@ -570,9 +599,19 @@ export default function ShopPublicPage() {
         // Inject color theme values as CSS variables so components like PremiumButton can inherit them
         ["--primary-theme-color" as any]: primaryColor,
         ["--text-theme-color" as any]: textColor,
+        ["--border-radius-theme" as any]: borderRadius === "none" ? "0px" : borderRadius === "subtle" ? "8px" : borderRadius === "pill" ? "32px" : "18px",
       }}
       className="min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300"
     >
+      {announcementActive && announcementText && (
+        <div 
+          style={{ backgroundColor: announcementBg }}
+          className="py-2.5 px-4 text-xs font-black text-center text-white font-mono uppercase tracking-wider leading-none shrink-0 z-40 select-none"
+        >
+          {announcementText}
+        </div>
+      )}
+
       {/* Background Decorative Glow Orbs */}
       <div className="absolute top-10 left-1/4 w-[350px] h-[350px] rounded-full blur-[120px] pointer-events-none" style={{ backgroundColor: `${primaryColor}0a` }} />
       <div className="absolute bottom-20 right-1/4 w-[400px] h-[400px] rounded-full blur-[140px] pointer-events-none" style={{ backgroundColor: `${primaryColor}0a` }} />
@@ -638,7 +677,7 @@ export default function ShopPublicPage() {
             </Link>
           )}
 
-          {!isViandaStore && (
+          {!isViandaStore && !isStoreClosed && (
             <button 
               onClick={() => setIsCartOpen(true)}
               className="p-3 text-zinc-950 rounded-full font-bold relative transition-all cursor-pointer"
@@ -674,8 +713,59 @@ export default function ShopPublicPage() {
           </div>
         )}
 
-        {/* 1. PUBLIC VIANDAS PLANNER VIEW */}
-        {isViandaStore ? (
+        {isStoreClosed ? (
+          <div 
+            style={{ borderRadius: "var(--border-radius-theme, 16px)" }}
+            className="glass-panel p-8 md:p-12 border border-zinc-900 bg-zinc-900/10 flex flex-col items-center justify-center text-center gap-6 max-w-xl mx-auto w-full my-12"
+          >
+            <AlertTriangle className="w-16 h-16 text-red-500 animate-pulse" />
+            <div className="flex flex-col gap-2">
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider">Cerrado Temporalmente</h2>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                {storeClosedMessage || "Estamos cerrados por vacaciones o fuera de horario. ¡Volvemos pronto!"}
+              </p>
+            </div>
+            
+            {/* Social contact direct buttons */}
+            {(instagramUrl || tiktokUrl || whatsappUrl) && (
+              <div className="flex flex-col gap-3 w-full border-t border-zinc-900 pt-6">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Contactanos en Redes Sociales</span>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {instagramUrl && (
+                    <a 
+                      href={`https://instagram.com/${instagramUrl.replace("@", "")}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-200 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      Instagram (@{instagramUrl})
+                    </a>
+                  )}
+                  {tiktokUrl && (
+                    <a 
+                      href={`https://tiktok.com/@${tiktokUrl.replace("@", "")}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-200 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      TikTok
+                    </a>
+                  )}
+                  {whatsappUrl && (
+                    <a 
+                      href={`https://wa.me/${whatsappUrl.replace(/[^0-9]/g, "")}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-400 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      WhatsApp Directo
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isViandaStore ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Planner Forms */}
             <div className="lg:col-span-2 flex flex-col gap-6">
@@ -1005,6 +1095,45 @@ export default function ShopPublicPage() {
               </div>
             )}
           </div>
+        )}
+        {/* Footer Social Links */}
+        {!isStoreClosed && (instagramUrl || tiktokUrl || whatsappUrl) && (
+          <footer className="mt-16 pt-8 border-t border-zinc-900 flex flex-col items-center gap-4 text-center select-none pb-4">
+            <span className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider">Seguinos en Redes</span>
+            <div className="flex items-center gap-4">
+              {instagramUrl && (
+                <a 
+                  href={`https://instagram.com/${instagramUrl.replace("@", "")}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                >
+                  Instagram
+                </a>
+              )}
+              {tiktokUrl && (
+                <a 
+                  href={`https://tiktok.com/@${tiktokUrl.replace("@", "")}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                >
+                  TikTok
+                </a>
+              )}
+              {whatsappUrl && (
+                <a 
+                  href={`https://wa.me/${whatsappUrl.replace(/[^0-9]/g, "")}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                >
+                  WhatsApp
+                </a>
+              )}
+            </div>
+            <p className="text-[9px] text-zinc-600 mt-2">© {new Date().getFullYear()} {tenant.name}. Todos los derechos reservados.</p>
+          </footer>
         )}
       </main>
 

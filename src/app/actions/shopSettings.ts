@@ -10,6 +10,16 @@ export interface ThemeSettings {
   textColor: string;
   fontFamily: string;
   cardStyle: "glass" | "classic" | "minimal";
+  // Expanded Settings
+  announcementText?: string;
+  announcementActive?: boolean;
+  announcementBg?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
+  whatsappUrl?: string;
+  isStoreClosed?: boolean;
+  storeClosedMessage?: string;
+  borderRadius?: "none" | "subtle" | "rounded" | "pill";
 }
 
 export async function updateShopSettings(
@@ -17,6 +27,7 @@ export async function updateShopSettings(
   data: {
     logoUrl?: string | null;
     bannerUrl?: string | null;
+    description?: string | null;
     themeSettings?: ThemeSettings;
   }
 ) {
@@ -24,6 +35,7 @@ export async function updateShopSettings(
     const updateData: {
       logoUrl?: string | null;
       bannerUrl?: string | null;
+      description?: string | null;
       themeSettings?: string;
     } = {};
 
@@ -32,6 +44,9 @@ export async function updateShopSettings(
     }
     if (data.bannerUrl !== undefined) {
       updateData.bannerUrl = data.bannerUrl;
+    }
+    if (data.description !== undefined) {
+      updateData.description = data.description;
     }
     if (data.themeSettings !== undefined) {
       updateData.themeSettings = JSON.stringify(data.themeSettings);

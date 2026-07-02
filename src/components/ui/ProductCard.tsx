@@ -136,7 +136,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   };
 
   return (
-    <div className="glass-panel glass-panel-hover rounded-2xl overflow-hidden flex flex-col group h-full">
+    <div 
+      style={{ borderRadius: "var(--border-radius-theme, 16px)" }}
+      className="glass-panel glass-panel-hover overflow-hidden flex flex-col group h-full"
+    >
       {/* Product Image Panel */}
       <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
         <img
