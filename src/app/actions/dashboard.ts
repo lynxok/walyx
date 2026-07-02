@@ -19,6 +19,23 @@ export type DashboardStats = {
     count: number;
     totalRevenue: number;
   }[];
+  dailySalesHistory: {
+    date: string;
+    ordersCount: number;
+    totalRevenue: number;
+    paymentSplits: {
+      paymentMethod: string;
+      amount: number;
+    }[];
+  }[];
+  recentOrders: {
+    id: string;
+    customerName: string;
+    createdAt: Date;
+    total: number;
+    paymentMethod: string;
+    status: string;
+  }[];
 };
 
 export async function getDashboardStats(tenantId: string): Promise<{ success: boolean; data?: DashboardStats; error?: string }> {
@@ -124,6 +141,62 @@ export async function getDashboardStats(tenantId: string): Promise<{ success: bo
       totalRevenue: info.totalRevenue,
     }));
 
+    // Calculate recent daily sales history (last 7 calendar days with sales activity)
+    const salesByDateMap = new Map<string, { count: number; total: number; payments: Record<string, number> }>();
+    orders.forEach((o) => {
+      const dateKey = new Date(o.createdAt).toISOString().split("T")[0];
+      const existing = salesByDateMap.get(dateKey);
+      if (existing) {
+        existing.count += 1;
+        existing.total += o.total;
+        existing.payments[o.paymentMethod] = (existing.payments[o.paymentMethod] || 0) + o.total;
+      } else {
+        salesByDateMap.set(dateKey, {
+          count: 1,
+          total: o.total,
+          payments: {
+            [o.paymentMethod]: o.total
+          }
+        });
+      }
+    });
+
+    const dailySalesHistory = Array.from(salesByDateMap.entries())
+      .map(([date, info]) => ({
+        date,
+        ordersCount: info.count,
+        totalRevenue: info.total,
+        paymentSplits: Object.entries(info.payments).map(([paymentMethod, amount]) => ({
+          paymentMethod,
+          amount,
+        })),
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 7);
+
+    // Query last 10 orders including customer name
+    const dbRecentOrders = await db.order.findMany({
+      where: {
+        tenantId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 10,
+      include: {
+        customer: true,
+      },
+    });
+
+    const recentOrders = dbRecentOrders.map((o) => ({
+      id: o.id,
+      customerName: o.customer?.name || "Invitado",
+      createdAt: o.createdAt,
+      total: o.total,
+      paymentMethod: o.paymentMethod,
+      status: o.status,
+    }));
+
     return {
       success: true,
       data: {
@@ -132,6 +205,8 @@ export async function getDashboardStats(tenantId: string): Promise<{ success: bo
         totalOrdersCount,
         abcProducts,
         dailyClose,
+        dailySalesHistory,
+        recentOrders
       },
     };
   } catch (error: any) {

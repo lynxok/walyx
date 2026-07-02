@@ -804,79 +804,79 @@ export default function AdminDashboardPage() {
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === "dashboard" && stats && (
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-6">
               {/* Stat Cards & Mini Chart */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Card 1: Ventas */}
-                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-0.5 transition-all duration-300 shadow-lg shadow-black/20 flex flex-col justify-between h-28 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Ventas Totales</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Ventas Totales</span>
                     <div 
-                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.08)", color: "var(--primary-color)" }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.04] shadow-inner"
                     >
-                      <DollarSign className="w-4 h-4" />
+                      <DollarSign className="w-3.5 h-3.5" />
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">${stats.totalSales.toFixed(2)}</h3>
-                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <h3 className="text-2xl font-black text-white font-mono tracking-tight">${stats.totalSales.toFixed(2)}</h3>
+                    <p className="text-[9px] text-zinc-500 font-semibold flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
                       Ventas brutas del período
                     </p>
                   </div>
                 </div>
 
                 {/* Card 2: Ticket Promedio */}
-                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-0.5 transition-all duration-300 shadow-lg shadow-black/20 flex flex-col justify-between h-28 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Ticket Promedio</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Ticket Promedio</span>
                     <div 
-                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.08)", color: "var(--primary-color)" }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.04] shadow-inner"
                     >
-                      <TrendingUp className="w-4 h-4" />
+                      <TrendingUp className="w-3.5 h-3.5" />
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">${stats.averageTicket.toFixed(2)}</h3>
-                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Promedio por orden de compra</p>
+                    <h3 className="text-2xl font-black text-white font-mono tracking-tight">${stats.averageTicket.toFixed(2)}</h3>
+                    <p className="text-[9px] text-zinc-500 font-semibold">Promedio por orden</p>
                   </div>
                 </div>
 
                 {/* Card 3: Total Pedidos */}
-                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-0.5 transition-all duration-300 shadow-lg shadow-black/20 flex flex-col justify-between h-28 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Total Pedidos</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Total Pedidos</span>
                     <div 
-                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.08)", color: "var(--primary-color)" }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.04] shadow-inner"
                     >
-                      <ShoppingBag className="w-4 h-4" />
+                      <ShoppingBag className="w-3.5 h-3.5" />
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">{stats.totalOrdersCount}</h3>
-                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Excluyendo cancelados</p>
+                    <h3 className="text-2xl font-black text-white font-mono tracking-tight">{stats.totalOrdersCount}</h3>
+                    <p className="text-[9px] text-zinc-500 font-semibold">Excluyendo cancelados</p>
                   </div>
                 </div>
               </div>
 
-              {/* Middle Section: SVG Sales Distribution & ABC curve */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* SVG Payment Share Chart */}
-                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Métodos de Pago de Hoy</h3>
-                    <p className="text-[10px] text-zinc-500 mb-6">Distribución de ingresos según canal.</p>
+              {/* Middle Grid: Payment splits & Daily Sales Summary */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* SVG Payment Share Chart (Compact) */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] shadow-lg flex flex-col justify-between">
+                  <div className="mb-2">
+                    <h3 className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Métodos de Pago de Hoy</h3>
+                    <p className="text-[9px] text-zinc-500">Distribución de ingresos</p>
                   </div>
 
                   {stats.dailyClose.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center py-8">
-                      <p className="text-zinc-600 text-xs italic">Aún no hay ventas registradas hoy.</p>
+                    <div className="flex-1 flex items-center justify-center py-4">
+                      <p className="text-zinc-600 text-[10px] italic">Sin ventas registradas hoy.</p>
                     </div>
                   ) : (
                     (() => {
@@ -884,9 +884,9 @@ export default function AdminDashboardPage() {
                       let accumulatedPercentage = 0;
                       
                       return (
-                        <div className="flex flex-col gap-6 items-center">
-                          {/* Svg Circle Chart */}
-                          <div className="relative w-28 h-28 flex items-center justify-center">
+                        <div className="flex items-center justify-around gap-2 my-2">
+                          {/* Svg Circle Chart Compact */}
+                          <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                               <circle cx="18" cy="18" r="15.915" fill="none" stroke="#18181b" strokeWidth="3" />
                               {stats.dailyClose.map((item, idx) => {
@@ -895,7 +895,6 @@ export default function AdminDashboardPage() {
                                 const strokeOffset = 100 - accumulatedPercentage;
                                 accumulatedPercentage += percentage;
 
-                                // colors palette
                                 const strokeColors = ["var(--primary-color)", "#3b82f6", "#a855f7"];
                                 const strokeColor = strokeColors[idx % strokeColors.length];
 
@@ -910,31 +909,30 @@ export default function AdminDashboardPage() {
                                     strokeWidth="3.2"
                                     strokeDasharray={strokeDash}
                                     strokeDashoffset={strokeOffset}
-                                    className="transition-all duration-500 ease-in-out"
+                                    className="transition-all duration-550 ease-in-out"
                                   />
                                 );
                               })}
                             </svg>
                             <div className="absolute flex flex-col items-center">
-                              <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider">Hoy</span>
-                              <span className="text-xs font-black text-white font-mono">${totalToday.toFixed(0)}</span>
+                              <span className="text-[8px] font-black text-white font-mono">${totalToday.toFixed(0)}</span>
                             </div>
                           </div>
 
-                          {/* Legend */}
-                          <div className="w-full flex flex-col gap-2">
+                          {/* Legend Compact */}
+                          <div className="flex flex-col gap-1 w-full max-w-[120px]">
                             {stats.dailyClose.map((item, idx) => {
                               const percentage = totalToday > 0 ? (item.totalRevenue / totalToday) * 100 : 0;
                               const colors = ["bg-[var(--primary-color)]", "bg-blue-500", "bg-purple-500"];
                               const colorClass = colors[idx % colors.length];
 
                               return (
-                                <div key={item.paymentMethod} className="flex items-center justify-between text-xs">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${colorClass}`}></span>
-                                    <span className="text-zinc-400 font-bold uppercase text-[9px]">{item.paymentMethod}</span>
+                                <div key={item.paymentMethod} className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colorClass}`}></span>
+                                    <span className="text-zinc-400 font-bold uppercase text-[8px] truncate">{item.paymentMethod}</span>
                                   </div>
-                                  <span className="text-zinc-350 font-mono font-semibold">${item.totalRevenue.toFixed(2)} ({percentage.toFixed(0)}%)</span>
+                                  <span className="text-zinc-300 font-mono font-semibold">${item.totalRevenue.toFixed(0)}</span>
                                 </div>
                               );
                             })}
@@ -945,59 +943,80 @@ export default function AdminDashboardPage() {
                   )}
                 </div>
 
-                {/* ABC Product Analysis Table */}
-                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 lg:col-span-2 flex flex-col gap-4">
+                {/* Historial de Ventas Diarias (7 días) */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] shadow-lg lg:col-span-2 flex flex-col gap-2">
                   <div>
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Clasificación ABC de Productos</h3>
-                    <p className="text-[10px] text-zinc-500">Clasificación según participación en ingresos (A: 70%, B: 20%, C: 10%)</p>
+                    <h3 className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Historial de Ventas Diarias</h3>
+                    <p className="text-[9px] text-zinc-500">Resumen contable de los últimos 7 días con ventas</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-[10px] border-collapse">
                       <thead>
-                        <tr className="border-b border-zinc-900/80 text-zinc-400 uppercase text-[9px] font-bold tracking-wider">
-                          <th className="py-2.5">Producto</th>
-                          <th className="py-2.5 text-right">Cant. Vendida</th>
-                          <th className="py-2.5 text-right">Ingresos</th>
-                          <th className="py-2.5 text-right">Acumulado (%)</th>
-                          <th className="py-2.5 text-center">Clase</th>
+                        <tr className="border-b border-zinc-900/80 text-zinc-400 uppercase text-[8px] font-bold tracking-wider">
+                          <th className="pb-1.5">Fecha</th>
+                          <th className="pb-1.5 text-right">Pedidos</th>
+                          <th className="pb-1.5 text-right">Efectivo</th>
+                          <th className="pb-1.5 text-right">Transf / Tarj</th>
+                          <th className="pb-1.5 text-right font-black text-white">Total Diario</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!stats.dailySalesHistory || stats.dailySalesHistory.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-4 text-center text-zinc-500 italic">No hay registros de ventas anteriores.</td>
+                          </tr>
+                        ) : (
+                          stats.dailySalesHistory.map((day) => {
+                            const cashSplit = day.paymentSplits.find(s => s.paymentMethod === "CASH")?.amount || 0;
+                            const otherSplit = day.paymentSplits.filter(s => s.paymentMethod !== "CASH").reduce((sum, s) => sum + s.amount, 0);
+                            
+                            return (
+                              <tr key={day.date} className="border-b border-zinc-950/60 hover:bg-zinc-950/25 transition-all">
+                                <td className="py-1.5 text-white font-mono font-bold">
+                                  {new Date(day.date + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })}
+                                </td>
+                                <td className="py-1.5 text-right text-zinc-300 font-mono">{day.ordersCount} ped.</td>
+                                <td className="py-1.5 text-right text-zinc-400 font-mono">${cashSplit.toFixed(0)}</td>
+                                <td className="py-1.5 text-right text-zinc-400 font-mono">${otherSplit.toFixed(0)}</td>
+                                <td className="py-1.5 text-right text-white font-mono font-bold">${day.totalRevenue.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid 2: ABC Curve & Recent 10 Orders */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* ABC Product Analysis Table (Compact) */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] shadow-lg flex flex-col gap-2">
+                  <div>
+                    <h3 className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Clasificación ABC de Productos</h3>
+                    <p className="text-[9px] text-zinc-500">Curva de ingresos (A: 70% | B: 20% | C: 10% )</p>
+                  </div>
+                  <div className="overflow-y-auto max-h-56">
+                    <table className="w-full text-left text-[10px] border-collapse">
+                      <thead>
+                        <tr className="border-b border-zinc-900/80 text-zinc-400 uppercase text-[8px] font-bold tracking-wider">
+                          <th className="pb-1.5">Producto</th>
+                          <th className="pb-1.5 text-right">Cant.</th>
+                          <th className="pb-1.5 text-right">Clase</th>
                         </tr>
                       </thead>
                       <tbody>
                         {stats.abcProducts.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-6 text-center text-zinc-500 italic">Aún no hay suficientes órdenes registradas.</td>
+                            <td colSpan={3} className="py-4 text-center text-zinc-500 italic">Sin datos.</td>
                           </tr>
                         ) : (
-                          stats.abcProducts.slice(0, 5).map((p) => (
+                          stats.abcProducts.slice(0, 6).map((p) => (
                             <tr key={p.productId} className="border-b border-zinc-950/60 hover:bg-zinc-950/25 transition-all">
-                              <td className="py-3 text-white font-semibold flex items-center gap-1.5">
-                                <span className={`w-1 h-1 rounded-full ${
-                                  p.class === "A" ? "bg-emerald-500" : p.class === "B" ? "bg-[var(--primary-color)]" : "bg-zinc-500"
-                                }`}></span>
-                                {p.name}
-                              </td>
-                              <td className="py-3 text-right text-zinc-300 font-mono">{p.totalQuantity}</td>
-                              <td className="py-3 text-right text-zinc-350 font-mono">{p.totalRevenue.toFixed(2)}</td>
-                              <td className="py-3 text-right text-zinc-400 font-mono w-32">
-                                <div className="flex items-center justify-end gap-2">
-                                  <span>{p.cumulativePercentage.toFixed(1)}%</span>
-                                  {/* Progress bar */}
-                                  <div className="w-12 h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-white/[0.02]">
-                                    <div 
-                                      style={{ 
-                                        width: `${Math.min(100, p.cumulativePercentage)}%`,
-                                        backgroundColor: p.class === "A" 
-                                          ? "#10b981" 
-                                          : p.class === "B" 
-                                            ? "var(--primary-color)" 
-                                            : "#71717a" 
-                                      }}
-                                      className="h-full rounded-full transition-all duration-500"
-                                    ></div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-3 text-center">
+                              <td className="py-1 text-white font-semibold truncate max-w-[110px]">{p.name}</td>
+                              <td className="py-1 text-right text-zinc-300 font-mono font-semibold">{p.totalQuantity} un.</td>
+                              <td className="py-1 text-right">
                                 <span 
                                   style={p.class === "A" ? {
                                     backgroundColor: "rgba(16, 185, 129, 0.08)",
@@ -1012,10 +1031,78 @@ export default function AdminDashboardPage() {
                                     borderColor: "rgba(113, 113, 122, 0.15)",
                                     color: "#a1a1aa"
                                   }}
-                                  className="px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase border"
+                                  className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase border"
                                 >
-                                  Clase {p.class}
+                                  {p.class}
                                 </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Últimos 10 Pedidos (Alta Densidad) */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-4 rounded-2xl border border-white/[0.06] shadow-lg lg:col-span-2 flex flex-col gap-2">
+                  <div>
+                    <h3 className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Últimos Pedidos Recibidos</h3>
+                    <p className="text-[9px] text-zinc-500">Monitoreo de órdenes en tiempo real</p>
+                  </div>
+                  <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                    <table className="w-full text-left text-[10px] border-collapse">
+                      <thead>
+                        <tr className="border-b border-zinc-900/80 text-zinc-400 uppercase text-[8px] font-bold tracking-wider">
+                          <th className="pb-1.5">Orden</th>
+                          <th className="pb-1.5">Cliente</th>
+                          <th className="pb-1.5 text-center">Hora</th>
+                          <th className="pb-1.5 text-center">Pago</th>
+                          <th className="pb-1.5 text-center">Estado</th>
+                          <th className="pb-1.5 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!stats.recentOrders || stats.recentOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-zinc-500 italic">No se han registrado pedidos recientes.</td>
+                          </tr>
+                        ) : (
+                          stats.recentOrders.map((order) => (
+                            <tr key={order.id} className="border-b border-zinc-950/60 hover:bg-zinc-950/25 transition-all">
+                              <td className="py-1 text-zinc-300 font-mono font-bold">
+                                #{order.id.slice(-4).toUpperCase()}
+                              </td>
+                              <td className="py-1 text-white font-semibold truncate max-w-[100px]">
+                                {order.customerName}
+                              </td>
+                              <td className="py-1 text-center text-zinc-400 font-mono">
+                                {new Date(order.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                              </td>
+                              <td className="py-1 text-center">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                  order.paymentMethod === "CASH" 
+                                    ? "bg-emerald-500/10 border border-emerald-500/15 text-emerald-400" 
+                                    : "bg-blue-500/10 border border-blue-500/15 text-blue-400"
+                                }`}>
+                                  {order.paymentMethod}
+                                </span>
+                              </td>
+                              <td className="py-1 text-center">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                  order.status === "DELIVERED" 
+                                    ? "bg-zinc-900 border border-zinc-800 text-zinc-400"
+                                    : order.status === "PENDING"
+                                      ? "bg-amber-500/10 border border-amber-500/15 text-amber-400"
+                                      : order.status === "CANCELLED"
+                                        ? "bg-red-500/10 border border-red-500/15 text-red-400"
+                                        : "bg-[rgba(var(--primary-rgb),0.1)] border border-[rgba(var(--primary-rgb),0.15)] text-[var(--primary-color)]"
+                                }`}>
+                                  {order.status}
+                                </span>
+                              </td>
+                              <td className="py-1 text-right text-white font-mono font-bold">
+                                ${order.total.toFixed(2)}
                               </td>
                             </tr>
                           ))
@@ -1027,27 +1114,25 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Stock Warning Alerts */}
-              <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 flex flex-col gap-4">
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Alertas de Stock Crítico</h3>
-                <div className="flex flex-col gap-2">
-                  {products.filter((p) => p.stock <= 5).length === 0 ? (
-                    <div className="text-zinc-500 text-xs py-2 italic text-center">Todos los productos cuentan con stock suficiente (&gt; 5 unidades).</div>
-                  ) : (
-                    products.filter((p) => p.stock <= 5).map((p) => (
+              <div className="bg-zinc-900/30 backdrop-blur-md p-3 rounded-2xl border border-white/[0.06] shadow-lg flex flex-col gap-2">
+                <h3 className="text-[10px] font-bold text-white uppercase tracking-wider">Alertas de Stock Crítico</h3>
+                {products.filter((p) => p.stock <= 5).length === 0 ? (
+                  <div className="text-zinc-500 text-[10px] py-1 italic text-center">Todos los productos cuentan con stock suficiente (&gt; 5 unidades).</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {products.filter((p) => p.stock <= 5).map((p) => (
                       <div 
                         key={p.id} 
                         style={{ backgroundColor: "rgba(239, 68, 68, 0.03)", borderColor: "rgba(239, 68, 68, 0.15)" }}
-                        className="flex items-center justify-between border px-4 py-3.5 rounded-2xl text-xs text-red-400 shadow-sm"
+                        className="flex items-center gap-2 border px-2.5 py-1 rounded-xl text-[10px] text-red-400 shadow-sm shrink-0"
                       >
-                        <span className="font-bold flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-                          {p.name}
-                        </span>
-                        <span>Stock disponible: <strong className="font-black underline font-mono">{p.stock} un.</strong></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                        <span className="font-bold">{p.name}</span>
+                        <span className="text-zinc-500 font-mono">({p.stock} un.)</span>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
