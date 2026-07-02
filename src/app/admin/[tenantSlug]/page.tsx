@@ -28,7 +28,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Info
+  Info,
+  Menu
 } from "lucide-react";
 import { getTenantBySlug } from "@/app/actions/tenant";
 import { getCategoriesByTenant, createCategory, updateCategory, deleteCategory } from "@/app/actions/category";
@@ -246,6 +247,9 @@ export default function AdminDashboardPage() {
   const [scConfigError, setScConfigError]     = useState("");
   // Inline row edit tracker: rowId -> values[]
   const [scRowEdits, setScRowEdits]           = useState<Record<string, string[]>>({});
+
+  // Mobile Drawer State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Cash Register states (new shift-based)
   const [activeSession, setActiveSession] = useState<CashSessionWithTransactions | null>(null);
@@ -643,6 +647,12 @@ export default function AdminDashboardPage() {
       {/* Top Banner Header */}
       <header className="border-b border-white/[0.06] bg-zinc-950/70 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-lg shadow-black/20">
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl text-zinc-450 hover:text-white hover:bg-zinc-900 transition-all duration-300"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
           <Link href="/" className="p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all duration-300">
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -660,7 +670,7 @@ export default function AdminDashboardPage() {
                 {hasType}
               </span>
             </div>
-            <p className="text-xs text-zinc-550">Panel de Administración / {tenant.slug}</p>
+            <p className="text-xs text-zinc-500">Panel de Administración / {tenant.slug}</p>
           </div>
         </div>
         <Link href={`/shop/${tenant.slug}`}>
@@ -670,10 +680,77 @@ export default function AdminDashboardPage() {
         </Link>
       </header>
 
+      {/* Mobile Drawer Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}>
+          <aside 
+            onClick={(e) => e.stopPropagation()}
+            className="fixed left-0 top-0 bottom-0 w-72 bg-zinc-950/95 border-r border-white/[0.06] p-6 flex flex-col gap-2.5 shadow-2xl overflow-y-auto"
+          >
+            <div className="flex justify-between items-center pb-4 border-b border-zinc-900 mb-2">
+              <div>
+                <h4 className="font-black text-white text-sm">{tenant.name}</h4>
+                <p className="text-[10px] text-zinc-500">Menú de Navegación</p>
+              </div>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {[
+              { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
+              { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
+              { id: "catalog", label: "Catálogo", icon: <Package className="w-4 h-4" /> },
+              { id: "stock", label: "Control de Stock", icon: <Layers className="w-4 h-4" /> },
+              ...(hasType === "VIANDA" ? [{ id: "menu", label: "Menú Semanal", icon: <Calendar className="w-4 h-4" /> }] : []),
+              ...(hasType !== "ROPA" ? [{ id: "insumos", label: "Recetas e Insumos", icon: <Activity className="w-4 h-4" /> }] : []),
+              ...(hasType === "ROPA" ? [{ id: "talles", label: "Tablas de Talles", icon: <Layers className="w-4 h-4" /> }] : []),
+              { id: "cash", label: "Cierre de Caja", icon: <CreditCard className="w-4 h-4" /> },
+              { id: "recovery", label: "Recuperar Ventas", icon: <LifeBuoy className="w-4 h-4" /> },
+              { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
+              { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> },
+              { id: "help", label: "Ayuda & Soporte", icon: <LifeBuoy className="w-4 h-4 animate-pulse" /> }
+            ].map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  style={isActive ? {
+                    backgroundColor: "rgba(var(--primary-rgb), 0.08)",
+                    borderColor: "rgba(var(--primary-rgb), 0.15)",
+                    color: "var(--primary-color)"
+                  } : {}}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border relative transition-all duration-300 ${
+                    isActive
+                      ? "shadow-sm shadow-black/10"
+                      : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
+                  }`}
+                >
+                  {isActive && (
+                    <span 
+                      style={{ backgroundColor: "var(--primary-color)", boxShadow: "0 0 10px var(--primary-color)" }}
+                      className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r"
+                    ></span>
+                  )}
+                  {item.icon}
+                  {item.label}
+                </button>
+              );
+            })}
+          </aside>
+        </div>
+      )}
+
       {/* Main Admin Grid */}
       <div className="flex-1 flex flex-col lg:flex-row gap-6 p-6 lg:p-8 max-w-7xl w-full mx-auto relative z-10">
         {/* Navigation Sidebar Panel */}
-        <aside className="w-full lg:w-64 flex flex-col gap-1.5 bg-zinc-900/20 backdrop-blur-md border border-white/[0.06] p-4 rounded-3xl shrink-0 h-fit shadow-xl shadow-black/25">
+        <aside className="hidden lg:flex w-full lg:w-64 flex-col gap-1.5 bg-zinc-900/20 backdrop-blur-md border border-white/[0.06] p-4 rounded-3xl shrink-0 h-fit shadow-xl shadow-black/25">
           {[
             { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
             { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
@@ -701,7 +778,7 @@ export default function AdminDashboardPage() {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border relative transition-all duration-300 ${
                   isActive
                     ? "shadow-sm shadow-black/10"
-                    : "bg-transparent border-transparent text-zinc-450 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
+                    : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
                 }`}
               >
                 {isActive && (
@@ -760,7 +837,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-3xl font-black text-white font-mono tracking-tight">${stats.averageTicket.toFixed(2)}</h3>
-                    <p className="text-[10px] text-zinc-550 mt-1 font-semibold">Promedio por orden de compra</p>
+                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Promedio por orden de compra</p>
                   </div>
                 </div>
 
@@ -778,7 +855,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-3xl font-black text-white font-mono tracking-tight">{stats.totalOrdersCount}</h3>
-                    <p className="text-[10px] text-zinc-550 mt-1 font-semibold">Excluyendo cancelados</p>
+                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Excluyendo cancelados</p>
                   </div>
                 </div>
               </div>
@@ -789,7 +866,7 @@ export default function AdminDashboardPage() {
                 <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 flex flex-col justify-between">
                   <div>
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Métodos de Pago de Hoy</h3>
-                    <p className="text-[10px] text-zinc-550 mb-6">Distribución de ingresos según canal.</p>
+                    <p className="text-[10px] text-zinc-500 mb-6">Distribución de ingresos según canal.</p>
                   </div>
 
                   {stats.dailyClose.length === 0 ? (
@@ -867,12 +944,12 @@ export default function AdminDashboardPage() {
                 <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 lg:col-span-2 flex flex-col gap-4">
                   <div>
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Clasificación ABC de Productos</h3>
-                    <p className="text-[10px] text-zinc-550">Clasificación según participación en ingresos (A: 70%, B: 20%, C: 10%)</p>
+                    <p className="text-[10px] text-zinc-500">Clasificación según participación en ingresos (A: 70%, B: 20%, C: 10%)</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="border-b border-zinc-900/80 text-zinc-450 uppercase text-[9px] font-bold tracking-wider">
+                        <tr className="border-b border-zinc-900/80 text-zinc-400 uppercase text-[9px] font-bold tracking-wider">
                           <th className="py-2.5">Producto</th>
                           <th className="py-2.5 text-right">Cant. Vendida</th>
                           <th className="py-2.5 text-right">Ingresos</th>
@@ -895,8 +972,8 @@ export default function AdminDashboardPage() {
                                 {p.name}
                               </td>
                               <td className="py-3 text-right text-zinc-300 font-mono">{p.totalQuantity}</td>
-                              <td className="py-3 text-right text-zinc-300 font-mono">${p.totalRevenue.toFixed(2)}</td>
-                              <td className="py-3 text-right text-zinc-450 font-mono w-32">
+                              <td className="py-3 text-right text-zinc-350 font-mono">{p.totalRevenue.toFixed(2)}</td>
+                              <td className="py-3 text-right text-zinc-400 font-mono w-32">
                                 <div className="flex items-center justify-end gap-2">
                                   <span>{p.cumulativePercentage.toFixed(1)}%</span>
                                   {/* Progress bar */}
@@ -2270,7 +2347,7 @@ export default function AdminDashboardPage() {
                                 <div className="text-[10px] text-zinc-500 mt-0.5">
                                   {cart.globalUser?.email || "Sin email"}
                                 </div>
-                                <div className="text-[10px] text-zinc-550">
+                                <div className="text-[10px] text-zinc-500">
                                   {cart.globalUser?.phone || "Sin teléfono"}
                                 </div>
                               </td>
@@ -2743,7 +2820,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {activeSession && !blindClose && (
-                <div className="text-[10px] text-zinc-550 font-bold">
+                <div className="text-[10px] text-zinc-500 font-bold">
                   Diferencia esperada:{" "}
                   <strong className={`font-mono ${
                     ((parseFloat(manualActualBalanceInput) || 0) - activeSession.expectedBalance) === 0 
