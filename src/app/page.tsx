@@ -18,6 +18,7 @@ import {
   Gift
 } from "lucide-react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
+import { AutoCarousel } from "@/components/ui/AutoCarousel";
 
 const SEED_SHOPS = [
   {
@@ -197,9 +198,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-6 items-stretch snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0">
+          <AutoCarousel desktopGridColsClassName="md:grid-cols-3">
             {/* Plan Basico */}
-            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-blue-500/10 hover:border-blue-500/40 hover:shadow-[0_0_30px_rgba(37,99,235,0.2)] transition-all duration-300 w-[85vw] sm:w-[340px] md:w-auto shrink-0 md:shrink snap-center">
+            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-blue-500/10 hover:border-blue-500/40 hover:shadow-[0_0_30px_rgba(37,99,235,0.2)] transition-all duration-300 h-full flex-1">
               <div className="flex flex-col gap-6">
                 <div>
                   <h4 className="text-lg font-bold text-zinc-300">Básico</h4>
@@ -241,7 +242,7 @@ export default function Home() {
             </div>
 
             {/* Plan Pro (Recomendado) */}
-            <div className="relative p-[2px] rounded-3xl bg-gradient-to-br from-blue-600 via-blue-900 to-orange-500 shadow-[0_0_40px_rgba(37,99,235,0.25)] hover:shadow-[0_0_50px_rgba(249,115,22,0.4)] transition-all duration-500 flex flex-col w-[85vw] sm:w-[340px] md:w-auto shrink-0 md:shrink snap-center">
+            <div className="relative p-[2px] rounded-3xl bg-gradient-to-br from-blue-600 via-blue-900 to-orange-500 shadow-[0_0_40px_rgba(37,99,235,0.25)] hover:shadow-[0_0_50px_rgba(249,115,22,0.4)] transition-all duration-500 flex flex-col h-full flex-1">
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-blue-950 to-orange-950 text-white text-xs font-black uppercase tracking-wider rounded-full border border-orange-500/30 shadow-lg flex items-center gap-1.5 z-10">
                 <Sparkles className="w-3 h-3 text-orange-400" />
                 <span>Más popular</span>
@@ -296,7 +297,7 @@ export default function Home() {
             </div>
 
             {/* Plan Premium */}
-            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-orange-500/10 hover:border-orange-500/40 hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all duration-300 w-[85vw] sm:w-[340px] md:w-auto shrink-0 md:shrink snap-center">
+            <div className="glass-card p-8 rounded-3xl flex flex-col justify-between border border-orange-500/10 hover:border-orange-500/40 hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all duration-300 h-full flex-1">
               <div className="flex flex-col gap-6">
                 <div>
                   <h4 className="text-lg font-bold text-zinc-300">Premium</h4>
@@ -336,7 +337,7 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-          </div>
+          </AutoCarousel>
         </section>
 
         {/* Demo Stores Selection */}
@@ -349,11 +350,11 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <AutoCarousel desktopGridColsClassName="lg:grid-cols-3">
             {SEED_SHOPS.map((shop) => (
               <div 
                 key={shop.slug} 
-                className="group relative rounded-2xl overflow-hidden transition-all flex flex-col justify-between glass-card glass-card-hover"
+                className="group relative rounded-2xl overflow-hidden transition-all flex flex-col justify-between glass-card glass-card-hover h-full flex-1"
               >
                 <div className="h-48 relative overflow-hidden">
                   <img 
@@ -386,7 +387,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
+          </AutoCarousel>
         </section>
       </main>
 
