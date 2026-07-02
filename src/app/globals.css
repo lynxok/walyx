@@ -178,4 +178,13 @@ body {
   animation: orb-float-2 16s infinite ease-in-out;
 }
 
+/* Hide scrollbar for carousels */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 
