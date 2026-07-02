@@ -2,6 +2,16 @@
 
 import { db } from "@/lib/db";
 
+export type KitchenOrderItemDetail = {
+  orderItemId: string;
+  orderId: string;
+  customerName: string;
+  requestedQuantity: number;
+  assignedQuantity: number;
+  createdAt: Date;
+  status: string;
+};
+
 export type KitchenConsolidatedItem = {
   productId: string;
   productName: string;
@@ -9,11 +19,13 @@ export type KitchenConsolidatedItem = {
   requested: number;
   assigned: number;
   pending: number;
+  orders: KitchenOrderItemDetail[];
 };
 
 /**
  * Gets the consolidated list of items to prepare in the kitchen for a given delivery date and tenant.
  * Filters by orders in status "PENDING" or "PREPARING".
+ * Returns detailed orders for nested list items.
  */
 export async function getKitchenConsolidated(
   tenantId: string,
@@ -35,7 +47,15 @@ export async function getKitchenConsolidated(
       },
       include: {
         product: true,
+        order: {
+          include: {
+            customer: true
+          }
+        }
       },
+      orderBy: {
+        createdAt: "asc"
+      }
     });
 
     // Aggregate by product in memory
@@ -51,13 +71,23 @@ export async function getKitchenConsolidated(
           requested: 0,
           assigned: 0,
           pending: 0,
+          orders: [],
         };
       }
 
       aggregation[productId].requested += item.quantity;
       aggregation[productId].assigned += item.assignedQuantity;
-      // Calculate pending per item to avoid issues if assignedQuantity exceeds quantity on some custom flows
       aggregation[productId].pending += Math.max(0, item.quantity - item.assignedQuantity);
+
+      aggregation[productId].orders.push({
+        orderItemId: item.id,
+        orderId: item.orderId,
+        customerName: item.order.customer?.name || "Cliente",
+        requestedQuantity: item.quantity,
+        assignedQuantity: item.assignedQuantity,
+        createdAt: item.order.createdAt,
+        status: item.order.status
+      });
     }
 
     return {
@@ -108,7 +138,7 @@ export async function assignProductionStock(
           order: true,
         },
         orderBy: {
-          createdAt: "asc", // FIFO based on creation date of OrderItem (or Order)
+          createdAt: "asc",
         },
       });
 
@@ -177,3 +207,71 @@ export async function assignProductionStock(
     };
   }
 }
+
+/**
+ * Updates the assigned quantity for a single OrderItem manually from the nested list.
+ */
+export async function updateOrderItemAssignment(
+  orderItemId: string,
+  assignedQuantity: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!orderItemId || assignedQuantity < 0) {
+      throw new Error("Parámetros inválidos.");
+    }
+
+    await db.$transaction(async (tx) => {
+      const item = await tx.orderItem.findUnique({
+        where: { id: orderItemId },
+        include: { order: true }
+      });
+
+      if (!item) throw new Error("Ítem de pedido no encontrado.");
+      if (assignedQuantity > item.quantity) {
+        throw new Error("La cantidad asignada no puede superar la cantidad solicitada.");
+      }
+
+      await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: { assignedQuantity }
+      });
+
+      // If at least one item starts getting prepared, transition order to PREPARING
+      if (item.order.status === "PENDING" && assignedQuantity > 0) {
+        await tx.order.update({
+          where: { id: item.orderId },
+          data: { status: "PREPARING" }
+        });
+      }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateOrderItemAssignment:", error);
+    return { success: false, error: error.message || "Error al actualizar asignación." };
+  }
+}
+
+/**
+ * Marks an entire order as DELIVERED (despachada/enviada) and closes it.
+ */
+export async function deliverOrder(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!orderId) {
+      throw new Error("El ID del pedido es requerido.");
+    }
+
+    await db.order.update({
+      where: { id: orderId },
+      data: { status: "DELIVERED" }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in deliverOrder:", error);
+    return { success: false, error: error.message || "Error al despachar el pedido." };
+  }
+}
+

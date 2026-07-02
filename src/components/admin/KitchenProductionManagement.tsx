@@ -5,19 +5,24 @@ import {
   Search, 
   ChefHat, 
   Plus, 
-  Sparkles,
   Calendar,
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
-  TrendingUp,
-  User,
-  ShoppingBag,
+  ChevronDown,
+  ChevronUp,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  ShoppingBag,
+  Truck,
+  Check
 } from "lucide-react";
 import { PremiumButton } from "@/components/ui/PremiumButton";
-import { getKitchenConsolidated, assignProductionStock } from "@/app/actions/kitchen";
+import { 
+  getKitchenConsolidated, 
+  assignProductionStock, 
+  updateOrderItemAssignment, 
+  deliverOrder 
+} from "@/app/actions/kitchen";
 
 interface Tenant {
   id: string;
@@ -35,14 +40,15 @@ export default function KitchenProductionManagement({ tenant }: KitchenProductio
     return today.toISOString().split("T")[0];
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeSubTab, setActiveSubTab] = useState<"prep" | "dispatch">("prep");
+  
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  // Custom manual allocation modal state
-  const [selectedProductDetails, setSelectedProductDetails] = useState<any | null>(null);
-  const [inputQuantities, setInputQuantities] = useState<Record<string, number>>({});
+  // Accordion expanded state for product rows
+  const [expandedProducts, setExpandedProducts] = useState<Record<string, boolean>>({});
 
   const fetchConsolidatedData = async () => {
     setLoading(true);
@@ -55,7 +61,7 @@ export default function KitchenProductionManagement({ tenant }: KitchenProductio
         setError(response.error || "Ocurrió un error al cargar el consolidado.");
       }
     } catch (err: any) {
-      setError(err.message || "Error de red al cargar el consolidado.");
+      setError(err.message || "Error al cargar datos.");
     } finally {
       setLoading(false);
     }
@@ -65,32 +71,109 @@ export default function KitchenProductionManagement({ tenant }: KitchenProductio
     fetchConsolidatedData();
   }, [selectedDate]);
 
-  const handleRegisterProduction = async (productId: string, customQty?: number) => {
-    const qtyToRegister = customQty || inputQuantities[productId] || 0;
-    if (qtyToRegister <= 0) return;
+  const toggleProductExpand = (productId: string) => {
+    setExpandedProducts(prev => ({ ...prev, [productId]: !prev[productId] }));
+  };
 
-    setActionLoading(productId);
+  // Handles manual checkbox checking per individual portion in a customer's order item
+  const handleCheckboxChange = async (orderItemId: string, currentAssigned: number, totalQty: number, checkIndex: number) => {
+    // If checkIndex is checked, we want to set assigned quantity to checkIndex + 1
+    // If checkIndex is unchecked, we set it to checkIndex (so checkIndex is now the first unchecked one)
+    const isCurrentlyChecked = checkIndex < currentAssigned;
+    const newAssigned = isCurrentlyChecked ? checkIndex : checkIndex + 1;
+
+    setActionLoading(orderItemId);
     try {
-      const response = await assignProductionStock(tenant.id, productId, qtyToRegister, selectedDate);
-      if (response.success) {
-        // Clear input quantity
-        setInputQuantities(prev => ({ ...prev, [productId]: 0 }));
-        // Refresh consolidated view
+      const res = await updateOrderItemAssignment(orderItemId, newAssigned);
+      if (res.success) {
         await fetchConsolidatedData();
       } else {
-        alert(response.error || "Error al asignar producción.");
+        alert(res.error || "Error al actualizar la asignación.");
       }
     } catch (err: any) {
-      alert(err.message || "Error al registrar producción.");
+      alert(err.message || "Error al procesar la asignación.");
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleQuantityInputChange = (productId: string, val: string) => {
-    const num = parseInt(val) || 0;
-    setInputQuantities(prev => ({ ...prev, [productId]: num }));
+  // Registers batch production via FIFO
+  const handleRegisterBatchProduction = async (productId: string, qty: number) => {
+    setActionLoading(productId);
+    try {
+      const res = await assignProductionStock(tenant.id, productId, qty, selectedDate);
+      if (res.success) {
+        await fetchConsolidatedData();
+      } else {
+        alert(res.error || "Error al asignar producción.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Error de red.");
+    } finally {
+      setActionLoading(null);
+    }
   };
+
+  // Marks a completed order as DELIVERED
+  const handleDeliverOrder = async (orderId: string) => {
+    setActionLoading(orderId);
+    try {
+      const res = await deliverOrder(orderId);
+      if (res.success) {
+        await fetchConsolidatedData();
+      } else {
+        alert(res.error || "Error al despachar pedido.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Error al despachar.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Calculations for Dispatch SubTab
+  // Groups order details by Order ID to identify which orders are completely ready for dispatch
+  const getOrdersForDispatch = () => {
+    const ordersMap: Record<string, {
+      orderId: string;
+      customerName: string;
+      totalItems: number;
+      assignedItems: number;
+      isReady: boolean;
+      itemsList: { productName: string; qty: number; assigned: number }[];
+    }> = {};
+
+    for (const prod of items) {
+      for (const ord of prod.orders) {
+        if (!ordersMap[ord.orderId]) {
+          ordersMap[ord.orderId] = {
+            orderId: ord.orderId,
+            customerName: ord.customerName,
+            totalItems: 0,
+            assignedItems: 0,
+            isReady: false,
+            itemsList: []
+          };
+        }
+        ordersMap[ord.orderId].totalItems += ord.requestedQuantity;
+        ordersMap[ord.orderId].assignedItems += ord.assignedQuantity;
+        ordersMap[ord.orderId].itemsList.push({
+          productName: prod.productName,
+          qty: ord.requestedQuantity,
+          assigned: ord.assignedQuantity
+        });
+      }
+    }
+
+    return Object.values(ordersMap).map(o => ({
+      ...o,
+      isReady: o.totalItems > 0 && o.totalItems === o.assignedItems
+    }));
+  };
+
+  const ordersForDispatch = getOrdersForDispatch();
+  const readyOrders = ordersForDispatch.filter(o => o.isReady);
+  const pendingOrders = ordersForDispatch.filter(o => !o.isReady);
 
   const filteredItems = items.filter(item => 
     item.productName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -98,246 +181,361 @@ export default function KitchenProductionManagement({ tenant }: KitchenProductio
 
   return (
     <div className="w-full flex flex-col gap-6">
-      {/* Header and Filter Bar */}
+      {/* Top Navigation & Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/30 backdrop-blur-md border border-white/[0.06] p-6 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-violet-600/20 border border-violet-500/30 rounded-2xl text-violet-400">
-            <ChefHat className="w-6 h-6 animate-bounce" />
+            <ChefHat className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              Consolidado de Cocina y Producción
-              <span className="text-xs bg-violet-500/20 text-violet-300 border border-violet-500/30 px-2 py-0.5 rounded-full font-normal">
-                Batch Mode
-              </span>
+            <h2 className="text-xl font-bold text-white">
+              Cocina y Despacho
             </h2>
             <p className="text-xs text-zinc-400">
-              Registra stock recién hecho y distribúyelo automáticamente a los pedidos pendientes de tus clientes.
+              Registra qué viandas o tortas están listas y despacha los pedidos completados a tus clientes.
             </p>
           </div>
         </div>
 
-        {/* Date Selector */}
-        <div className="flex items-center gap-3 bg-zinc-950/40 border border-white/[0.08] p-2.5 rounded-2xl">
-          <Calendar className="w-4 h-4 text-zinc-400" />
-          <input 
-            type="date" 
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent text-sm text-white focus:outline-none cursor-pointer [color-scheme:dark]"
-          />
-          <button 
-            onClick={fetchConsolidatedData}
-            className="p-1 text-zinc-400 hover:text-white transition-colors"
-            title="Recargar"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* SubTab Toggle */}
+          <div className="flex p-1 bg-zinc-950/60 border border-white/[0.06] rounded-xl">
+            <button
+              onClick={() => setActiveSubTab("prep")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                activeSubTab === "prep" 
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25" 
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              1. Cocina (Consolidado)
+            </button>
+            <button
+              onClick={() => setActiveSubTab("dispatch")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeSubTab === "dispatch" 
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25" 
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              2. Despacho ({readyOrders.length})
+            </button>
+          </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-violet-600/10 to-violet-900/5 border border-white/[0.06] p-5 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-xs text-zinc-400">Productos Demandados</p>
-            <h3 className="text-2xl font-bold text-white mt-1">{items.length}</h3>
-          </div>
-          <div className="p-2.5 bg-violet-500/20 text-violet-400 rounded-xl">
-            <ChefHat className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-emerald-600/10 to-emerald-900/5 border border-white/[0.06] p-5 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-xs text-zinc-400">Porciones Preparadas</p>
-            <h3 className="text-2xl font-bold text-emerald-400 mt-1">
-              {items.reduce((acc, curr) => acc + curr.assigned, 0)}
-            </h3>
-          </div>
-          <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-amber-600/10 to-amber-900/5 border border-white/[0.06] p-5 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-xs text-zinc-400">Porciones Pendientes</p>
-            <h3 className="text-2xl font-bold text-amber-400 mt-1">
-              {items.reduce((acc, curr) => acc + curr.pending, 0)}
-            </h3>
-          </div>
-          <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl">
-            <AlertCircle className="w-5 h-5 animate-pulse" />
+          {/* Date Picker */}
+          <div className="flex items-center gap-3 bg-zinc-950/40 border border-white/[0.08] p-2.5 rounded-xl">
+            <Calendar className="w-4 h-4 text-zinc-400" />
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-sm text-white focus:outline-none cursor-pointer [color-scheme:dark]"
+            />
+            <button 
+              onClick={fetchConsolidatedData}
+              className="p-1 text-zinc-400 hover:text-white transition-colors"
+              title="Recargar"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-4 top-3.5 w-4 h-4 text-zinc-500" />
-        <input
-          type="text"
-          placeholder="Buscar platos o pasteles a preparar..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-zinc-950/40 border border-white/[0.08] hover:border-white/[0.15] focus:border-violet-500/50 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all duration-300"
-        />
-      </div>
-
-      {/* Main Grid */}
+      {/* Main Area */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
-          <p className="text-sm text-zinc-400">Cargando consolidado de cocina...</p>
+          <p className="text-sm text-zinc-400">Actualizando datos...</p>
         </div>
       ) : error ? (
         <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl flex items-center gap-3 text-red-400">
           <AlertCircle className="w-5 h-5" />
           <p className="text-sm">{error}</p>
         </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="bg-zinc-900/10 border border-dashed border-white/[0.06] p-16 rounded-3xl text-center">
-          <ChefHat className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-base font-bold text-white">Sin viandas pendientes</h3>
-          <p className="text-xs text-zinc-500 mt-1">No hay pedidos pendientes de cocción o despacho para esta fecha.</p>
+      ) : activeSubTab === "prep" ? (
+        /* SUB-TAB 1: COCOINA CONSOLIDADO (ROW LAYOUT) */
+        <div className="flex flex-col gap-4">
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="absolute left-4 top-3 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Buscar plato o postre..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-zinc-950/40 border border-white/[0.08] focus:border-violet-500/50 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white focus:outline-none transition-all"
+            />
+          </div>
+
+          {/* List Wrapper */}
+          <div className="bg-zinc-950/40 border border-white/[0.06] rounded-3xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.06] bg-zinc-900/40 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+                    <th className="py-4 px-6 w-10"></th>
+                    <th className="py-4 px-6">Plato / Producto</th>
+                    <th className="py-4 px-6 text-center">Total Demanda</th>
+                    <th className="py-4 px-6 text-center">Listos</th>
+                    <th className="py-4 px-6 text-center">Pendientes</th>
+                    <th className="py-4 px-6 text-right">Lotes Rápidos</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
+                        No hay viandas o pasteles pendientes de preparación.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => {
+                      const isExpanded = expandedProducts[item.productId];
+                      const progress = item.requested > 0 ? (item.assigned / item.requested) * 100 : 0;
+
+                      return (
+                        <React.Fragment key={item.productId}>
+                          {/* Parent Row */}
+                          <tr className="hover:bg-white/[0.02] transition-colors group">
+                            <td className="py-4 px-6">
+                              <button
+                                onClick={() => toggleProductExpand(item.productId)}
+                                className="p-1 bg-zinc-900/60 border border-white/[0.06] rounded-lg text-zinc-400 hover:text-white"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-3">
+                                {item.imageUrl ? (
+                                  <img 
+                                    src={item.imageUrl} 
+                                    alt={item.productName} 
+                                    className="w-10 h-10 rounded-lg object-cover border border-white/[0.08]"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center justify-center text-zinc-500">
+                                    <ChefHat className="w-5 h-5" />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="text-sm font-bold text-white group-hover:text-violet-400 transition-colors">
+                                    {item.productName}
+                                  </div>
+                                  {/* Progress bar under name */}
+                                  <div className="w-32 bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-1.5 border border-white/[0.04]">
+                                    <div 
+                                      className={`h-full rounded-full ${progress === 100 ? 'bg-emerald-500' : 'bg-violet-600'}`}
+                                      style={{ width: `${progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center text-sm font-semibold text-white">
+                              {item.requested} un.
+                            </td>
+                            <td className="py-4 px-6 text-center text-sm font-semibold text-emerald-400">
+                              {item.assigned} un.
+                            </td>
+                            <td className="py-4 px-6 text-center text-sm font-semibold text-amber-500">
+                              {item.pending} un.
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              {item.pending > 0 ? (
+                                <div className="inline-flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleRegisterBatchProduction(item.productId, 1)}
+                                    disabled={actionLoading !== null}
+                                    className="px-2.5 py-1 bg-zinc-900 border border-white/[0.06] hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 rounded font-semibold transition-colors"
+                                  >
+                                    +1 Listo
+                                  </button>
+                                  {item.pending >= 5 && (
+                                    <button
+                                      onClick={() => handleRegisterBatchProduction(item.productId, 5)}
+                                      disabled={actionLoading !== null}
+                                      className="px-2.5 py-1 bg-zinc-900 border border-white/[0.06] hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 rounded font-semibold transition-colors"
+                                    >
+                                      +5
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleRegisterBatchProduction(item.productId, item.pending)}
+                                    disabled={actionLoading !== null}
+                                    className="px-2.5 py-1 bg-violet-600/20 border border-violet-500/30 text-[10px] text-violet-300 hover:bg-violet-600/30 rounded font-bold transition-colors"
+                                    title="Marcar todo el pendiente como listo"
+                                  >
+                                    Tildar Todo
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                                  Completo
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+
+                          {/* Expanded Nested Detail Row */}
+                          {isExpanded && (
+                            <tr className="bg-zinc-900/20">
+                              <td colSpan={6} className="p-0">
+                                <div className="px-16 py-4 border-t border-white/[0.03] bg-zinc-950/20">
+                                  <div className="text-xs text-zinc-400 font-semibold mb-3 flex items-center gap-1.5">
+                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                    Pedidos que contienen este plato (Criterio FIFO):
+                                  </div>
+                                  <div className="flex flex-col gap-2.5">
+                                    {item.orders.map((ord: any) => (
+                                      <div 
+                                        key={ord.orderItemId}
+                                        className="flex items-center justify-between bg-zinc-950/50 border border-white/[0.04] p-3 rounded-xl hover:border-white/[0.08] transition-all"
+                                      >
+                                        <div>
+                                          <span className="text-xs font-bold text-white">{ord.customerName}</span>
+                                          <span className="text-[10px] text-zinc-500 ml-2">
+                                            ({new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                                          </span>
+                                        </div>
+
+                                        {/* Individual Portion Interactive Checkboxes */}
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-[10px] text-zinc-400 mr-2">
+                                            Listos: {ord.assignedQuantity} / {ord.requestedQuantity}
+                                          </span>
+                                          <div className="flex items-center gap-1">
+                                            {Array.from({ length: ord.requestedQuantity }).map((_, idx) => {
+                                              const isChecked = idx < ord.assignedQuantity;
+                                              const isDisabled = actionLoading === ord.orderItemId;
+
+                                              return (
+                                                <button
+                                                  key={idx}
+                                                  onClick={() => handleCheckboxChange(ord.orderItemId, ord.assignedQuantity, ord.requestedQuantity, idx)}
+                                                  disabled={isDisabled}
+                                                  className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                                                    isChecked 
+                                                      ? "bg-emerald-500 border-emerald-500 text-black font-bold shadow-[0_0_6px_rgba(16,185,129,0.3)]" 
+                                                      : "border-zinc-700 bg-zinc-900 text-transparent hover:border-zinc-500"
+                                                  }`}
+                                                  title={`Marcar porción ${idx + 1}`}
+                                                >
+                                                  {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
-            const progress = item.requested > 0 ? (item.assigned / item.requested) * 100 : 0;
-            const inputVal = inputQuantities[item.productId] ?? "";
+        /* SUB-TAB 2: DESPACHO / PEDIDOS LISTOS PARA ENVÍO */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left panel: Ready for Delivery */}
+          <div className="bg-zinc-950/40 border border-white/[0.06] p-6 rounded-3xl shadow-xl flex flex-col gap-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+              Listos para Despacho / Envío ({readyOrders.length})
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Pedidos que ya tienen el 100% de sus viandas preparadas. Tíldalos para cambiar su estado a "Enviado" y cerrar la venta.
+            </p>
 
-            return (
-              <div 
-                key={item.productId} 
-                className="bg-zinc-900/20 backdrop-blur-md border border-white/[0.06] hover:border-violet-500/20 p-6 rounded-3xl flex flex-col justify-between transition-all duration-300 group shadow-lg"
-              >
-                <div>
-                  {/* Image and Name */}
-                  <div className="flex items-center gap-4">
-                    {item.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.productName} 
-                        className="w-14 h-14 rounded-2xl object-cover border border-white/[0.08]"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-2xl bg-zinc-950/60 border border-white/[0.08] flex items-center justify-center text-zinc-500">
-                        <ChefHat className="w-6 h-6" />
+            <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+              {readyOrders.length === 0 ? (
+                <div className="py-12 text-center text-xs text-zinc-500 border border-dashed border-white/[0.04] rounded-2xl">
+                  No hay pedidos 100% listos para despacho todavía.
+                </div>
+              ) : (
+                readyOrders.map(order => (
+                  <div 
+                    key={order.orderId}
+                    className="bg-zinc-900/30 border border-white/[0.06] hover:border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between transition-all"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-white">{order.customerName}</div>
+                      <div className="text-[10px] text-zinc-500 mt-1">
+                        Contiene: {order.itemsList.map(i => `${i.qty}x ${i.productName}`).join(", ")}
                       </div>
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-bold text-white text-base group-hover:text-violet-400 transition-colors line-clamp-2">
-                        {item.productName}
-                      </h4>
-                      <p className="text-xs text-zinc-500">Vianda / Repostería</p>
                     </div>
-                  </div>
 
-                  {/* Progress Indicator */}
-                  <div className="mt-5">
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-zinc-400">Progreso</span>
-                      <span className={`${progress === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {item.assigned} / {item.requested} un. ({Math.round(progress)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-zinc-950/60 h-2.5 rounded-full overflow-hidden border border-white/[0.04]">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          progress === 100 
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
-                            : 'bg-gradient-to-r from-violet-600 to-indigo-500 shadow-[0_0_8px_rgba(124,58,237,0.3)]'
-                        }`}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Metrics Box */}
-                  <div className="grid grid-cols-3 gap-2 bg-zinc-950/40 border border-white/[0.04] p-3 rounded-2xl mt-4 text-center">
-                    <div>
-                      <p className="text-[10px] text-zinc-500">Requerido</p>
-                      <p className="text-sm font-bold text-white mt-0.5">{item.requested}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-500">Listos</p>
-                      <p className="text-sm font-bold text-emerald-400 mt-0.5">{item.assigned}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-500">Pendiente</p>
-                      <p className="text-sm font-bold text-amber-500 mt-0.5">{item.pending}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Operations Footer */}
-                <div className="mt-6 pt-4 border-t border-white/[0.04] flex flex-col gap-3">
-                  {item.pending > 0 ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="Cantidad hecha"
-                        value={inputVal}
-                        onChange={(e) => handleQuantityInputChange(item.productId, e.target.value)}
-                        className="w-full bg-zinc-950/50 border border-white/[0.08] focus:border-violet-500/50 rounded-xl px-3 text-xs text-white focus:outline-none"
-                        min="1"
-                        max={item.pending}
-                      />
-                      <PremiumButton
-                        onClick={() => handleRegisterProduction(item.productId)}
-                        disabled={actionLoading === item.productId || !inputVal}
-                        className="shrink-0 text-xs py-2"
-                      >
-                        {actionLoading === item.productId ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          "Asignar"
-                        )}
-                      </PremiumButton>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-xl">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Producción Completada
-                    </div>
-                  )}
-
-                  {/* Quick Addition Buttons */}
-                  {item.pending > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleRegisterProduction(item.productId, 1)}
-                        disabled={actionLoading !== null}
-                        className="flex-1 py-1.5 bg-zinc-950/50 border border-white/[0.06] hover:bg-violet-600/15 hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 font-semibold rounded-lg transition-colors"
-                      >
-                        +1 Listo
-                      </button>
-                      {item.pending >= 5 && (
-                        <button
-                          onClick={() => handleRegisterProduction(item.productId, 5)}
-                          disabled={actionLoading !== null}
-                          className="flex-1 py-1.5 bg-zinc-950/50 border border-white/[0.06] hover:bg-violet-600/15 hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 font-semibold rounded-lg transition-colors"
-                        >
-                          +5 Listos
-                        </button>
+                    <button
+                      onClick={() => handleDeliverOrder(order.orderId)}
+                      disabled={actionLoading === order.orderId}
+                      className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 text-emerald-400 hover:text-black text-[11px] font-bold rounded-lg transition-all flex items-center gap-1"
+                    >
+                      {actionLoading === order.orderId ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Truck className="w-3.5 h-3.5" />
+                          Marcar Enviado
+                        </>
                       )}
-                      {item.pending >= 10 && (
-                        <button
-                          onClick={() => handleRegisterProduction(item.productId, 10)}
-                          disabled={actionLoading !== null}
-                          className="flex-1 py-1.5 bg-zinc-950/50 border border-white/[0.06] hover:bg-violet-600/15 hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 font-semibold rounded-lg transition-colors"
-                        >
-                          +10 Listos
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Right panel: Remaining/Pending preparation */}
+          <div className="bg-zinc-950/40 border border-white/[0.06] p-6 rounded-3xl shadow-xl flex flex-col gap-4">
+            <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2">
+              En Cocina / Incompletos ({pendingOrders.length})
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Pedidos parcialmente preparados que aún esperan viandas pendientes de cocción.
+            </p>
+
+            <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+              {pendingOrders.length === 0 ? (
+                <div className="py-12 text-center text-xs text-zinc-500 border border-dashed border-white/[0.04] rounded-2xl">
+                  No hay pedidos pendientes de cocción.
                 </div>
-              </div>
-            );
-          })}
+              ) : (
+                pendingOrders.map(order => {
+                  const percent = Math.round((order.assignedItems / order.totalItems) * 100);
+                  return (
+                    <div 
+                      key={order.orderId}
+                      className="bg-zinc-900/10 border border-white/[0.04] p-4 rounded-2xl flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-zinc-300">{order.customerName}</div>
+                        <div className="text-[10px] text-zinc-500 mt-1">
+                          Preparado: {order.assignedItems} de {order.totalItems} viandas ({percent}%)
+                        </div>
+                      </div>
+
+                      <div className="w-16 text-right">
+                        <span className="text-[10px] font-semibold bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                          {percent}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
