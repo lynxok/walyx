@@ -71,7 +71,7 @@ export const AutoCarousel: React.FC<AutoCarouselProps> = ({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className={`flex overflow-x-auto md:grid ${desktopGridColsClassName} ${gapClassName} items-stretch snap-x snap-mandatory scrollbar-none pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0`}
+        className={`flex overflow-x-auto md:grid ${desktopGridColsClassName} ${gapClassName} items-stretch snap-x snap-mandatory scrollbar-none pt-5 pb-4 md:pt-5 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0`}
       >
         {children.map((child, index) => (
           <div
