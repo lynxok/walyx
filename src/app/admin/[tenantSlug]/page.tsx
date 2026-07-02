@@ -119,6 +119,16 @@ const MOCK_KANBAN_ORDERS = [
   }
 ];
 
+function hexToRgb(hex: string): string | null {
+  if (!hex) return null;
+  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+  const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b);
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+  return result
+    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+    : null;
+}
+
 export default function AdminDashboardPage() {
   const [selectedKanbanOrder, setSelectedKanbanOrder] = useState<any>(null);
   const [kanbanOrders, setKanbanOrders] = useState(MOCK_KANBAN_ORDERS);
@@ -615,33 +625,55 @@ export default function AdminDashboardPage() {
   }
 
   // Detect type based on categories
+  const primaryRgb = hexToRgb(primaryColor) || "245, 158, 11";
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden">
+    <div 
+      style={{
+        "--primary-color": primaryColor,
+        "--primary-rgb": primaryRgb,
+        "--text-color": textColor,
+      } as React.CSSProperties}
+      className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative overflow-hidden"
+    >
+      {/* Background radial glow effects */}
+      <div className="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] bg-[rgba(var(--primary-rgb),0.03)] blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-200px] right-[-200px] w-[600px] h-[600px] bg-[rgba(var(--primary-rgb),0.03)] blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute top-[30%] right-[10%] w-[500px] h-[500px] bg-[rgba(var(--primary-rgb),0.02)] blur-[130px] rounded-full pointer-events-none" />
       {/* Top Banner Header */}
-      <header className="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-white/[0.06] bg-zinc-950/70 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-lg shadow-black/20">
         <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+          <Link href="/" className="p-2 bg-zinc-950/60 border border-white/[0.06] rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all duration-300">
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-white">{tenant.name}</h1>
-              <span className="text-xs px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full font-bold uppercase">{hasType}</span>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-black text-white tracking-tight">{tenant.name}</h1>
+              <span 
+                style={{
+                  backgroundColor: "rgba(var(--primary-rgb), 0.1)",
+                  borderColor: "rgba(var(--primary-rgb), 0.2)",
+                  color: "var(--primary-color)"
+                }}
+                className="text-[10px] px-2.5 py-0.5 border rounded-full font-black uppercase tracking-wider"
+              >
+                {hasType}
+              </span>
             </div>
-            <p className="text-xs text-zinc-500">Panel de Administración / {tenant.slug}</p>
+            <p className="text-xs text-zinc-550">Panel de Administración / {tenant.slug}</p>
           </div>
         </div>
         <Link href={`/shop/${tenant.slug}`}>
-          <PremiumButton variant="outline" size="sm">
+          <PremiumButton variant="outline" size="sm" className="hover:scale-[1.02] active:scale-[0.98] transition-all">
             Ver Tienda Pública <ChevronRight className="w-4 h-4 ml-1" />
           </PremiumButton>
         </Link>
       </header>
 
       {/* Main Admin Grid */}
-      <div className="flex-1 flex flex-col lg:flex-row">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 p-6 lg:p-8 max-w-7xl w-full mx-auto relative z-10">
         {/* Navigation Sidebar Panel */}
-        <aside className="w-full lg:w-64 border-r border-zinc-900 p-6 flex flex-col gap-2 bg-zinc-900/10 shrink-0">
+        <aside className="w-full lg:w-64 flex flex-col gap-1.5 bg-zinc-900/20 backdrop-blur-md border border-white/[0.06] p-4 rounded-3xl shrink-0 h-fit shadow-xl shadow-black/25">
           {[
             { id: "dashboard", label: "Dashboard", icon: <TrendingUp className="w-4 h-4" /> },
             { id: "orders", label: "Pedidos (Kanban)", icon: <ShoppingBag className="w-4 h-4" /> },
@@ -655,117 +687,281 @@ export default function AdminDashboardPage() {
             { id: "personalize", label: "Personalizar Shop", icon: <Palette className="w-4 h-4" /> },
             { id: "settings", label: "Configuración", icon: <SettingsIcon className="w-4 h-4" /> },
             { id: "help", label: "Ayuda & Soporte", icon: <LifeBuoy className="w-4 h-4 animate-pulse" /> }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border transition-all ${
-                activeTab === item.id
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
-                  : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+          ].map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                style={isActive ? {
+                  backgroundColor: "rgba(var(--primary-rgb), 0.08)",
+                  borderColor: "rgba(var(--primary-rgb), 0.15)",
+                  color: "var(--primary-color)"
+                } : {}}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs tracking-wider border relative transition-all duration-300 ${
+                  isActive
+                    ? "shadow-sm shadow-black/10"
+                    : "bg-transparent border-transparent text-zinc-450 hover:text-zinc-200 hover:bg-zinc-900/40 hover:border-white/[0.04]"
+                }`}
+              >
+                {isActive && (
+                  <span 
+                    style={{ backgroundColor: "var(--primary-color)", boxShadow: "0 0 10px var(--primary-color)" }}
+                    className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r"
+                  ></span>
+                )}
+                {item.icon}
+                {item.label}
+              </button>
+            );
+          })}
         </aside>
 
         {/* Content Pane */}
-        <main className="flex-1 p-6 lg:p-10 max-w-5xl w-full mx-auto">
+        <main className="flex-1 min-w-0">
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === "dashboard" && stats && (
             <div className="flex flex-col gap-8">
-              {/* Stat Cards */}
+              {/* Stat Cards & Mini Chart */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-zinc-500">
-                    <span className="text-xs font-bold uppercase tracking-wider">Ventas Totales</span>
-                    <DollarSign className="w-4 h-4" />
+                {/* Card 1: Ventas */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Ventas Totales</span>
+                    <div 
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                    </div>
                   </div>
-                  <h3 className="text-3xl font-black text-white">${stats.totalSales.toFixed(2)}</h3>
-                  <p className="text-xs text-emerald-500 font-semibold">Ventas del período</p>
+                  <div>
+                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">${stats.totalSales.toFixed(2)}</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 font-semibold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Ventas brutas del período
+                    </p>
+                  </div>
                 </div>
 
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-zinc-500">
-                    <span className="text-xs font-bold uppercase tracking-wider">Ticket Promedio</span>
-                    <TrendingUp className="w-4 h-4" />
+                {/* Card 2: Ticket Promedio */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Ticket Promedio</span>
+                    <div 
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
                   </div>
-                  <h3 className="text-3xl font-black text-white">${stats.averageTicket.toFixed(2)}</h3>
-                  <p className="text-xs text-zinc-500">Por orden de compra</p>
+                  <div>
+                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">${stats.averageTicket.toFixed(2)}</h3>
+                    <p className="text-[10px] text-zinc-550 mt-1 font-semibold">Promedio por orden de compra</p>
+                  </div>
                 </div>
 
-                <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-zinc-500">
-                    <span className="text-xs font-bold uppercase tracking-wider">Total Pedidos</span>
-                    <ShoppingBag className="w-4 h-4" />
+                {/* Card 3: Total Pedidos */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] hover:border-[rgba(var(--primary-rgb),0.3)] hover:-translate-y-1 hover:shadow-2xl hover:shadow-[rgba(var(--primary-rgb),0.02)] transition-all duration-300 shadow-xl shadow-black/25 flex flex-col justify-between h-40 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[rgba(var(--primary-rgb),0.02)] rounded-full blur-2xl group-hover:bg-[rgba(var(--primary-rgb),0.05)] transition-all"></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Total Pedidos</span>
+                    <div 
+                      style={{ backgroundColor: "rgba(var(--primary-rgb), 0.1)", color: "var(--primary-color)" }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center border border-white/[0.04] shadow-inner"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
                   </div>
-                  <h3 className="text-3xl font-black text-white">{stats.totalOrdersCount}</h3>
-                  <p className="text-xs text-amber-500 font-semibold">Excluyendo cancelados</p>
+                  <div>
+                    <h3 className="text-3xl font-black text-white font-mono tracking-tight">{stats.totalOrdersCount}</h3>
+                    <p className="text-[10px] text-zinc-550 mt-1 font-semibold">Excluyendo cancelados</p>
+                  </div>
                 </div>
               </div>
 
-              {/* ABC Product Analysis Table */}
-              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Curva ABC de Productos Estrellas</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Clasificación según participación en ingresos (A: 70%, B: 20%, C: 10%)</p>
+              {/* Middle Section: SVG Sales Distribution & ABC curve */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* SVG Payment Share Chart */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Métodos de Pago de Hoy</h3>
+                    <p className="text-[10px] text-zinc-550 mb-6">Distribución de ingresos según canal.</p>
+                  </div>
+
+                  {stats.dailyClose.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center py-8">
+                      <p className="text-zinc-600 text-xs italic">Aún no hay ventas registradas hoy.</p>
+                    </div>
+                  ) : (
+                    (() => {
+                      const totalToday = stats.dailyClose.reduce((sum, d) => sum + d.totalRevenue, 0);
+                      let accumulatedPercentage = 0;
+                      
+                      return (
+                        <div className="flex flex-col gap-6 items-center">
+                          {/* Svg Circle Chart */}
+                          <div className="relative w-28 h-28 flex items-center justify-center">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#18181b" strokeWidth="3" />
+                              {stats.dailyClose.map((item, idx) => {
+                                const percentage = totalToday > 0 ? (item.totalRevenue / totalToday) * 100 : 0;
+                                const strokeDash = `${percentage} ${100 - percentage}`;
+                                const strokeOffset = 100 - accumulatedPercentage;
+                                accumulatedPercentage += percentage;
+
+                                // colors palette
+                                const strokeColors = ["var(--primary-color)", "#3b82f6", "#a855f7"];
+                                const strokeColor = strokeColors[idx % strokeColors.length];
+
+                                return (
+                                  <circle
+                                    key={item.paymentMethod}
+                                    cx="18"
+                                    cy="18"
+                                    r="15.915"
+                                    fill="none"
+                                    stroke={strokeColor}
+                                    strokeWidth="3.2"
+                                    strokeDasharray={strokeDash}
+                                    strokeDashoffset={strokeOffset}
+                                    className="transition-all duration-500 ease-in-out"
+                                  />
+                                );
+                              })}
+                            </svg>
+                            <div className="absolute flex flex-col items-center">
+                              <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider">Hoy</span>
+                              <span className="text-xs font-black text-white font-mono">${totalToday.toFixed(0)}</span>
+                            </div>
+                          </div>
+
+                          {/* Legend */}
+                          <div className="w-full flex flex-col gap-2">
+                            {stats.dailyClose.map((item, idx) => {
+                              const percentage = totalToday > 0 ? (item.totalRevenue / totalToday) * 100 : 0;
+                              const colors = ["bg-[var(--primary-color)]", "bg-blue-500", "bg-purple-500"];
+                              const colorClass = colors[idx % colors.length];
+
+                              return (
+                                <div key={item.paymentMethod} className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${colorClass}`}></span>
+                                    <span className="text-zinc-400 font-bold uppercase text-[9px]">{item.paymentMethod}</span>
+                                  </div>
+                                  <span className="text-zinc-350 font-mono font-semibold">${item.totalRevenue.toFixed(2)} ({percentage.toFixed(0)}%)</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-zinc-900 text-zinc-400">
-                        <th className="py-3 font-bold uppercase tracking-wider">Producto</th>
-                        <th className="py-3 font-bold uppercase tracking-wider text-right">Cant. Vendida</th>
-                        <th className="py-3 font-bold uppercase tracking-wider text-right">Ingresos Totales</th>
-                        <th className="py-3 font-bold uppercase tracking-wider text-right">Acumulado (%)</th>
-                        <th className="py-3 font-bold uppercase tracking-wider text-center">Clasificación</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.abcProducts.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-4 text-center text-zinc-600">Aún no hay suficientes órdenes registradas.</td>
+
+                {/* ABC Product Analysis Table */}
+                <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 lg:col-span-2 flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Clasificación ABC de Productos</h3>
+                    <p className="text-[10px] text-zinc-550">Clasificación según participación en ingresos (A: 70%, B: 20%, C: 10%)</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-zinc-900/80 text-zinc-450 uppercase text-[9px] font-bold tracking-wider">
+                          <th className="py-2.5">Producto</th>
+                          <th className="py-2.5 text-right">Cant. Vendida</th>
+                          <th className="py-2.5 text-right">Ingresos</th>
+                          <th className="py-2.5 text-right">Acumulado (%)</th>
+                          <th className="py-2.5 text-center">Clase</th>
                         </tr>
-                      ) : (
-                        stats.abcProducts.map((p) => (
-                          <tr key={p.productId} className="border-b border-zinc-900/60 hover:bg-zinc-900/20">
-                            <td className="py-3 text-white font-semibold">{p.name}</td>
-                            <td className="py-3 text-right text-zinc-300">{p.totalQuantity}</td>
-                            <td className="py-3 text-right text-zinc-300">${p.totalRevenue.toFixed(2)}</td>
-                            <td className="py-3 text-right text-zinc-400">{p.cumulativePercentage.toFixed(1)}%</td>
-                            <td className="py-3 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                                p.class === "A" 
-                                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-500" 
-                                  : p.class === "B"
-                                  ? "bg-amber-500/10 border border-amber-500/20 text-amber-500"
-                                  : "bg-zinc-800 text-zinc-400"
-                              }`}>
-                                Clase {p.class}
-                              </span>
-                            </td>
+                      </thead>
+                      <tbody>
+                        {stats.abcProducts.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-zinc-500 italic">Aún no hay suficientes órdenes registradas.</td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          stats.abcProducts.slice(0, 5).map((p) => (
+                            <tr key={p.productId} className="border-b border-zinc-950/60 hover:bg-zinc-950/25 transition-all">
+                              <td className="py-3 text-white font-semibold flex items-center gap-1.5">
+                                <span className={`w-1 h-1 rounded-full ${
+                                  p.class === "A" ? "bg-emerald-500" : p.class === "B" ? "bg-[var(--primary-color)]" : "bg-zinc-500"
+                                }`}></span>
+                                {p.name}
+                              </td>
+                              <td className="py-3 text-right text-zinc-300 font-mono">{p.totalQuantity}</td>
+                              <td className="py-3 text-right text-zinc-300 font-mono">${p.totalRevenue.toFixed(2)}</td>
+                              <td className="py-3 text-right text-zinc-450 font-mono w-32">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span>{p.cumulativePercentage.toFixed(1)}%</span>
+                                  {/* Progress bar */}
+                                  <div className="w-12 h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-white/[0.02]">
+                                    <div 
+                                      style={{ 
+                                        width: `${Math.min(100, p.cumulativePercentage)}%`,
+                                        backgroundColor: p.class === "A" 
+                                          ? "#10b981" 
+                                          : p.class === "B" 
+                                            ? "var(--primary-color)" 
+                                            : "#71717a" 
+                                      }}
+                                      className="h-full rounded-full transition-all duration-500"
+                                    ></div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 text-center">
+                                <span 
+                                  style={p.class === "A" ? {
+                                    backgroundColor: "rgba(16, 185, 129, 0.08)",
+                                    borderColor: "rgba(16, 185, 129, 0.15)",
+                                    color: "#10b981"
+                                  } : p.class === "B" ? {
+                                    backgroundColor: "rgba(var(--primary-rgb), 0.08)",
+                                    borderColor: "rgba(var(--primary-rgb), 0.15)",
+                                    color: "var(--primary-color)"
+                                  } : {
+                                    backgroundColor: "rgba(113, 113, 122, 0.08)",
+                                    borderColor: "rgba(113, 113, 122, 0.15)",
+                                    color: "#a1a1aa"
+                                  }}
+                                  className="px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase border"
+                                >
+                                  Clase {p.class}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
               {/* Stock Warning Alerts */}
-              <div className="glass-panel p-6 rounded-2xl border border-zinc-900 bg-zinc-900/10 flex flex-col gap-3">
-                <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Alertas de Stock Crítico</h3>
+              <div className="bg-zinc-900/30 backdrop-blur-md p-6 rounded-3xl border border-white/[0.06] shadow-xl shadow-black/25 flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Alertas de Stock Crítico</h3>
                 <div className="flex flex-col gap-2">
                   {products.filter((p) => p.stock <= 5).length === 0 ? (
-                    <div className="text-zinc-500 text-xs py-2">Todos los productos cuentan con stock suficiente (&gt; 5 unidades).</div>
+                    <div className="text-zinc-500 text-xs py-2 italic text-center">Todos los productos cuentan con stock suficiente (&gt; 5 unidades).</div>
                   ) : (
                     products.filter((p) => p.stock <= 5).map((p) => (
-                      <div key={p.id} className="flex items-center justify-between bg-red-500/5 border border-red-500/20 px-4 py-3 rounded-xl text-xs text-red-400">
-                        <span className="font-semibold">{p.name}</span>
-                        <span>Stock disponible: <strong className="font-black underline">{p.stock}</strong></span>
+                      <div 
+                        key={p.id} 
+                        style={{ backgroundColor: "rgba(239, 68, 68, 0.03)", borderColor: "rgba(239, 68, 68, 0.15)" }}
+                        className="flex items-center justify-between border px-4 py-3.5 rounded-2xl text-xs text-red-400 shadow-sm"
+                      >
+                        <span className="font-bold flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                          {p.name}
+                        </span>
+                        <span>Stock disponible: <strong className="font-black underline font-mono">{p.stock} un.</strong></span>
                       </div>
                     ))
                   )}
