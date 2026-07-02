@@ -312,6 +312,8 @@ async function main() {
   });
 
   // Order for Viandas Tenant
+  const todayStr = new Date().toISOString().split("T")[0];
+
   const orderViandas = await prisma.order.create({
     data: {
       tenantId: viandasTenant.id,
@@ -322,6 +324,7 @@ async function main() {
       paymentStatus: "PAID",
       deliveryAddress: "Palermo Soho, CABA",
       deliveryNotes: "Tocar timbre de planta baja.",
+      deliveryDate: todayStr,
       items: {
         create: [
           {
@@ -350,6 +353,7 @@ async function main() {
       paymentStatus: "PENDING",
       deliveryAddress: "Belgrano R, CABA",
       deliveryNotes: "Llamar antes de llegar.",
+      deliveryDate: todayStr,
       items: {
         create: [
           {
